@@ -10,7 +10,8 @@ import axios from "axios";
 import dayjs from "dayjs";
 import { v4 as uuidv4 } from "uuid";
 
-const productId = "logseq-local-telegram-bot";
+type InputHandler = (ctx: Context, message: Message.ServiceMessage) => Promise<void>;
+
 const journalPageName = "Journal";
 const botTokenRegex = /^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$/;
 
@@ -44,6 +45,15 @@ const settings: SettingSchemaDesc[] = [
     title: "Inbox Name",
   }
 ];
+
+const messageHandlers: { [key: string]: InputHandler } = {
+  "text": handleText as InputHandler,
+  "photo": handlePhoto as InputHandler
+};
+
+const commandHandlers: { [key: string]: InputHandler } = {
+  "echo": handleEcho as InputHandler
+};
 
 function log(message: string) {
   console.log("[Local Telegram Bot] " + message);
@@ -161,7 +171,7 @@ async function handlePhoto(ctx: Context, message: Message.PhotoMessage) {
   const storage = logseq.Assets.makeSandboxStorage();
   await storage.setItem(filePath, response.data);
   
-  const fullFilePath = `./assets/storages/${productId}/${filePath}`;
+  const fullFilePath = `./assets/storages/${logseq.baseInfo.id}/${filePath}`;
   const text = `![${message.caption ?? ""}](${fullFilePath})`;
   if (!await writeBlocks(
       logseq.settings!.pageName,
@@ -188,17 +198,6 @@ function isMessageAuthorized(message: Message.ServiceMessage): boolean {
 
   return true;
 }
-
-type InputHandler = (ctx: Context, message: Message.ServiceMessage) => Promise<void>;
-
-const messageHandlers: { [ key: string ]: InputHandler} = {
-  "text" : handleText as InputHandler,
-  "photo": handlePhoto as InputHandler
-};
-
-const commandHandlers: { [key: string]: InputHandler } = {
-  "echo": handleEcho as InputHandler
-};
 
 function setupCommands(bot: Telegraf<Context>) {
   for (let commandType in commandHandlers) {
