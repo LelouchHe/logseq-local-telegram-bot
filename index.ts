@@ -233,6 +233,12 @@ async function start() {
 
   setupCommands(bot);
   setupMessageTypes(bot);
+  logseq.Editor.registerBlockContextMenuItem("Local Telegram Bot: Send", async (e) => {
+    console.log(e);
+  });
+  logseq.Editor.registerSlashCommand("Local Telegram Bot: Send", async (e) => {
+    console.log(e);
+  });
 
   try {
     await bot.launch();
