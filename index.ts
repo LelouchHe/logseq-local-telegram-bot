@@ -11,6 +11,8 @@ import { v4 as uuidv4 } from "uuid";
 
 const productId = "logseq-local-telegram-bot";
 const journalPageName = "Journal";
+const botTokenRegex = /^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$/;
+
 const settings: SettingSchemaDesc[] = [
   {
     key: "botToken",
@@ -42,6 +44,14 @@ const settings: SettingSchemaDesc[] = [
   }
 ];
 
+function log(message: string) {
+  console.log("[Local Telegram Bot] " + message);
+}
+
+function error(message: string) {
+  console.error("[Local Telegram Bot] " + message);
+}
+
 function setupCommands(bot: Telegraf<Context>) {
   bot.command("echo", (ctx) => {
     ctx.reply(ctx.message?.text ?? "");
@@ -71,13 +81,13 @@ async function findPage(pageName: string): Promise<BlockEntity[]> {
     `);
 
   if (!ret) {
-    console.log("Today's Journal is not available");
+    log("Today's Journal is not available");
     return [];
   }
   
   const pages = ret.flat();
   if (pages.length == 0 || !pages[0].name) {
-    console.log("Today's Journal is not available");
+    log("Today's Journal is not available");
     return [];
   }
 
@@ -87,7 +97,7 @@ async function findPage(pageName: string): Promise<BlockEntity[]> {
 async function writeBlocks(pageName: string, inboxName: string, texts: string[]): Promise<boolean> {
   const pageBlocksTree = await findPage(pageName);
   if (!pageBlocksTree || pageBlocksTree.length == 0) {
-    console.log("Request page is not available");
+    log("Request page is not available");
     return false;
   }
 
@@ -109,11 +119,9 @@ async function writeBlocks(pageName: string, inboxName: string, texts: string[])
     }
   }
   if (!inboxBlock) {
-    console.log(`Unable to find Inbox: ${inboxName}`);
+    log(`Unable to find Inbox: ${inboxName}`);
     return false;
   }
-
-  console.log(inboxBlock);
 
   const targetBlock = inboxBlock.uuid;
   const blocks = texts.map(t => ({ content: t }));
@@ -155,10 +163,11 @@ async function handlePhoto(ctx: Context, message: Message.PhotoMessage) {
   await storage.setItem(filePath, response.data);
   
   const fullFilePath = `./assets/storages/${productId}/${filePath}`;
+  const text = `![${message.caption ?? ""}](${fullFilePath})`;
   if (!await writeBlocks(
       logseq.settings!.pageName,
       logseq.settings!.inboxName,
-      [`![](${fullFilePath})`])) {
+      [ text ])) {
     ctx.reply("Failed to write this to Logseq");
     return;
   }
@@ -166,14 +175,14 @@ async function handlePhoto(ctx: Context, message: Message.PhotoMessage) {
 
 function isMessageAuthorized(message: Message.ServiceMessage): boolean {
   if (!message.from?.username) {
-    console.log("Invalid username from message");
+    log("Invalid username from message");
     return false;
   }
 
   const authorizedUsers: string[] = logseq.settings!.authorizedUsers.split(",").map((rawUserName: string) => rawUserName.trim());
   if (authorizedUsers && authorizedUsers.length > 0) {
     if (!authorizedUsers.includes(message.from.username)) {
-      console.log(`Unauthorized username: ${message.from.username}`)
+      log(`Unauthorized username: ${message.from.username}`)
       return false;
     }
   }
@@ -195,16 +204,46 @@ function setupMessageTypes(bot: Telegraf<Context>) {
   });
 }
 
-async function main() {
-  console.log("[Local Telegram Bot] Start");
-  logseq.useSettingsSchema(settings);
+let bot: Telegraf<Context>;
 
-  const bot = new Telegraf(logseq.settings!.botToken);
-  
+async function start() {
+  if (bot) {
+    await bot.stop();
+  }
+
+  bot = new Telegraf(logseq.settings!.botToken);
+
   setupCommands(bot);
   setupMessageTypes(bot);
-  
-  bot.launch();
+
+  try {
+    await bot.launch();
+  } catch (e) {
+    error("Failed to launch bot");
+  }
+
+  log("Start")
+}
+
+async function main() {
+  logseq.useSettingsSchema(settings);
+  logseq.onSettingsChanged((new_settings, old_settings) => {
+    if (new_settings.botToken != old_settings.botToken) {
+      if (new_settings.botToken.match(botTokenRegex)) {
+        start();
+      } else {
+        logseq.UI.showMsg("[Local Telegram Bot] Bot Token is not valid");
+      }
+    } 
+  });
+
+  if (!logseq.settings!.botToken.match(botTokenRegex)) {
+    logseq.UI.showMsg("[Local Telegram Bot] Bot Token is not valid");
+    logseq.showSettingsUI();
+    return;
+  }
+
+  start();
 }
 
 // bootstrap
