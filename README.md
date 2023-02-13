@@ -13,19 +13,34 @@ Currently, it's still under heavy development.
 
 ## Current available features
 
-1. Send text and photo to Logseg
+* Send text and photo to Logseg
     * inlucindg forward and reply, but only content is sent. Forward from who or reply to what is not.
-2. Page and Inbox can be changed from setting page
+* Page and Inbox can be changed from setting page
 
 ## Future features
 
-1. Send blocks back to Telegram
-2. Send TODO notificaiton
-3. Change Page and Inbox from Telegram
-4. Fetch customized notes
-5. Save and run other commands
-6. Support other types of messages
-7. Support channel message
+*not a full list, either not ordered by priority*
+* Send blocks back to Telegram
+* Send TODO notificaiton
+* Change Page and Inbox from Telegram
+* Fetch customized notes
+* Save and run other commands
+* Support other types of messages
+* Support channel message
+* Convert non-plain command into correct form (like DEADLINE)
+
+## Contribute
+
+Feel free to raise an issue or create a pull request!
+
+### How to develop it locally
+1. install [node](https://nodejs.org/en/) (v19.6 is used by me)
+2. clone the repo to local folder
+3. `yarn install`
+4. `yarn build`
+5. enable dev mode in logseq
+6. load unpacked pluging from repo folder
+
 
 ## Thanks
 
