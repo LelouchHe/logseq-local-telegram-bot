@@ -1,5 +1,5 @@
 import "@logseq/libs";
-import { BlockEntity, SettingSchemaDesc } from "@logseq/libs/dist/LSPlugin.user";
+import { PageEntity, BlockEntity, SettingSchemaDesc } from "@logseq/libs/dist/LSPlugin.user";
 
 // 4.* has URL is not constructor error, fallback to 3.*
 import { Telegraf, Context } from "telegraf";
@@ -10,6 +10,7 @@ import dayjs from "dayjs";
 import { v4 as uuidv4 } from "uuid";
 
 const productId = "logseq-local-telegram-bot";
+const journalPageName = "Journal";
 const settings: SettingSchemaDesc[] = [
   {
     key: "botToken",
@@ -33,15 +34,8 @@ const settings: SettingSchemaDesc[] = [
     title: "Page Name",
   },
   {
-    key: "createPageIfNotAvailable",
-    description: "Whether to create page if the page name is not available. \"Journal\" page won't be created anyway",
-    type: "boolean",
-    default: false,
-    title: "Create Page If Not Available",
-  },
-  {
     key: "inboxName",
-    description: "The content of the block that all regulare messages from Telegram are added to. If it's not found, messages are added to the front the current page",
+    description: "The content of the block that all regulare messages from Telegram are added to. If it's not found, messages are added to the 2nd block of the current page",
     type: "string",
     default: "#Inbox",
     title: "Inbox Name",
@@ -54,9 +48,51 @@ function setupCommands(bot: Telegraf<Context>) {
   });
 }
 
-async function writeBlocks(pageName: string, inboxName: string, texts: string[]) {
-  const pageBlocksTree = await logseq.Editor.getPageBlocksTree(pageName);
+async function findPage(pageName: string): Promise<BlockEntity[]> {
+  if (pageName != journalPageName) {
+    return logseq.Editor.getPageBlocksTree(pageName);
+  }
+
+  const d = new Date();
+  const todayDateObj = {
+    day: `${d.getDate()}`.padStart(2, "0"),
+    month: `${d.getMonth() + 1}`.padStart(2, "0"),
+    year: d.getFullYear(),
+  };
+  const todayDate = `${todayDateObj.year}${todayDateObj.month}${todayDateObj.day}`;
+
+  const ret: Array<PageEntity[]> | undefined = await logseq.DB.datascriptQuery(`
+      [:find (pull ?p [*])
+       :where
+       [?b :block/page ?p]
+       [?p :block/journal? true]
+       [?p :block/journal-day ?d]
+       [(= ?d ${todayDate})]]
+    `);
+
+  if (!ret) {
+    console.log("Today's Journal is not available");
+    return [];
+  }
+  
+  const pages = ret.flat();
+  if (pages.length == 0 || !pages[0].name) {
+    console.log("Today's Journal is not available");
+    return [];
+  }
+
+  return logseq.Editor.getPageBlocksTree(pages[0].name);;
+}
+
+async function writeBlocks(pageName: string, inboxName: string, texts: string[]): Promise<boolean> {
+  const pageBlocksTree = await findPage(pageName);
+  if (!pageBlocksTree || pageBlocksTree.length == 0) {
+    console.log("Request page is not available");
+    return false;
+  }
+
   let inboxBlock: BlockEntity|undefined|null = pageBlocksTree[0];
+  
   if (inboxName) {
     inboxBlock = pageBlocksTree.find((block: { content: string }) => {
       return block.content === inboxName;
@@ -73,23 +109,40 @@ async function writeBlocks(pageName: string, inboxName: string, texts: string[])
     }
   }
   if (!inboxBlock) {
-    logseq.UI.showMsg("[Local Telegram Bot] Unable to find inbox");
-    return;
+    console.log(`Unable to find Inbox: ${inboxName}`);
+    return false;
   }
+
+  console.log(inboxBlock);
 
   const targetBlock = inboxBlock.uuid;
   const blocks = texts.map(t => ({ content: t }));
-  const params = { before: true, sibling: true };
+  const params = { before: true, sibling: !inboxName };
   await logseq.Editor.insertBatchBlock(targetBlock, blocks, params);
+  return true;
 }
 
 async function handleText(ctx: Context, message: Message.TextMessage) {
-  ctx.reply("this is a normal message");
-  await writeBlocks("Feb 12th, 2023", "#text", [ message.text ]);
+  if (!message?.text) {
+    ctx.reply("Message is not valid");
+    return;
+  }
+
+  if (!await writeBlocks(
+      logseq.settings!.pageName,
+      logseq.settings!.inboxName,
+      [ message.text ])) {
+    ctx.reply("Failed to write this to Logseq");
+    return;
+  }
 }
 
 async function handlePhoto(ctx: Context, message: Message.PhotoMessage) {
-  ctx.reply("this is a photo message");
+  if (!message?.photo || message.photo.length == 0) {
+    ctx.reply("Photo is not valid");
+    return;
+  }
+
   const lastPhoto = message.photo[message.photo.length - 1];
 
   const fileUrl = await ctx.telegram.getFileLink(lastPhoto.file_id);
@@ -102,15 +155,43 @@ async function handlePhoto(ctx: Context, message: Message.PhotoMessage) {
   await storage.setItem(filePath, response.data);
   
   const fullFilePath = `./assets/storages/${productId}/${filePath}`;
-  await writeBlocks("Feb 12th, 2023", "#photo", [`![](${fullFilePath})`]);
+  if (!await writeBlocks(
+      logseq.settings!.pageName,
+      logseq.settings!.inboxName,
+      [`![](${fullFilePath})`])) {
+    ctx.reply("Failed to write this to Logseq");
+    return;
+  }
+}
+
+function isMessageAuthorized(message: Message.ServiceMessage): boolean {
+  if (!message.from?.username) {
+    console.log("Invalid username from message");
+    return false;
+  }
+
+  const authorizedUsers: string[] = logseq.settings!.authorizedUsers.split(",").map((rawUserName: string) => rawUserName.trim());
+  if (authorizedUsers && authorizedUsers.length > 0) {
+    if (!authorizedUsers.includes(message.from.username)) {
+      console.log(`Unauthorized username: ${message.from.username}`)
+      return false;
+    }
+  }
+
+  return true;
 }
 
 function setupMessageTypes(bot: Telegraf<Context>) {
   bot.on("text", (ctx) => {
-    handleText(ctx, ctx.message as Message.TextMessage);
+    if (isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
+      handleText(ctx, ctx.message as Message.TextMessage);
+    }
   });
+
   bot.on("photo", (ctx) => {
-    handlePhoto(ctx, ctx.message as Message.PhotoMessage);
+    if (isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
+      handlePhoto(ctx, ctx.message as Message.PhotoMessage);
+    }
   });
 }
 
