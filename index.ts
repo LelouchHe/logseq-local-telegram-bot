@@ -222,7 +222,7 @@ async function start() {
     error("Failed to launch bot");
   }
 
-  log("Start")
+  log("Start");
 }
 
 async function main() {
