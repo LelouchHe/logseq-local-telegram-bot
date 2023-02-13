@@ -12,10 +12,41 @@ import { v4 as uuidv4 } from "uuid";
 
 type InputHandler = (ctx: Context, message: Message.ServiceMessage) => Promise<void>;
 
+class Settings {
+  public get botToken() {
+    return logseq.settings!.botToken;
+  }
+
+  public get authorizedUsers() {
+    return logseq.settings!.authorizedUsers
+            .split(",")
+            .map((rawUserName: string) => rawUserName.trim());
+  }
+  public set authorizedUsers(users: string[]) {
+    logseq.settings!.authorizedUsers = users.join(",");
+  }
+
+  public get pageName() {
+    return logseq.settings!.pageName;
+  }
+  public set pageName(name: string) {
+    logseq.settings!.pageName = name;
+  }
+
+  public get inboxName() {
+    return logseq.settings!.inboxName;
+  }
+  public set inboxName(name: string) {
+    logseq.settings!.inboxName = name;
+  }
+}
+
+const settings = new Settings();
+
 const journalPageName = "Journal";
 const botTokenRegex = /^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$/;
 
-const settings: SettingSchemaDesc[] = [
+const settingsSchema: SettingSchemaDesc[] = [
   {
     key: "botToken",
     description: "Telegram Bot token. In order to start you need to create Telegram bot: https://core.telegram.org/bots#3-how-do-i-create-a-bot. Create a bot with BotFather, which is essentially a bot used to create other bots. The command you need is /newbot. After you choose title, BotFaher give you the token",
@@ -146,8 +177,8 @@ async function handleTextMessage(ctx: Context, message: Message.TextMessage) {
   }
 
   if (!await writeBlocks(
-      logseq.settings!.pageName,
-      logseq.settings!.inboxName,
+      settings.pageName,
+      settings.inboxName,
       [ message.text ])) {
     ctx.reply("Failed to write this to Logseq");
     return;
@@ -174,8 +205,8 @@ async function handlePhotoMessage(ctx: Context, message: Message.PhotoMessage) {
   const fullFilePath = `./assets/storages/${logseq.baseInfo.id}/${filePath}`;
   const text = `![${message.caption ?? ""}](${fullFilePath})`;
   if (!await writeBlocks(
-      logseq.settings!.pageName,
-      logseq.settings!.inboxName,
+      settings.pageName,
+      settings.inboxName,
       [ text ])) {
     ctx.reply("Failed to write this to Logseq");
     return;
@@ -188,9 +219,8 @@ function isMessageAuthorized(message: Message.ServiceMessage): boolean {
     return false;
   }
 
-  const authorizedUsers: string[] = logseq.settings!.authorizedUsers.split(",").map((rawUserName: string) => rawUserName.trim());
-  if (authorizedUsers && authorizedUsers.length > 0) {
-    if (!authorizedUsers.includes(message.from.username)) {
+  if (settings.authorizedUsers.length > 0) {
+    if (!settings.authorizedUsers.includes(message.from.username)) {
       log(`Unauthorized username: ${message.from.username}`)
       return false;
     }
@@ -228,7 +258,7 @@ async function start() {
     await bot.stop();
   }
 
-  bot = new Telegraf(logseq.settings!.botToken);
+  bot = new Telegraf(settings.botToken);
 
   setupCommands(bot);
   setupMessageTypes(bot);
@@ -249,7 +279,7 @@ async function start() {
 }
 
 async function main() {
-  logseq.useSettingsSchema(settings);
+  logseq.useSettingsSchema(settingsSchema);
   logseq.onSettingsChanged((new_settings, old_settings) => {
     if (new_settings.botToken != old_settings.botToken) {
       if (new_settings.botToken.match(botTokenRegex)) {
@@ -260,7 +290,7 @@ async function main() {
     } 
   });
 
-  if (!logseq.settings!.botToken.match(botTokenRegex)) {
+  if (!settings.botToken.match(botTokenRegex)) {
     logseq.UI.showMsg("[Local Telegram Bot] Bot Token is not valid");
     logseq.showSettingsUI();
     return;
