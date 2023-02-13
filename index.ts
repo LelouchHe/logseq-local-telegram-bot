@@ -52,12 +52,6 @@ function error(message: string) {
   console.error("[Local Telegram Bot] " + message);
 }
 
-function setupCommands(bot: Telegraf<Context>) {
-  bot.command("echo", (ctx) => {
-    ctx.reply(ctx.message?.text ?? "");
-  });
-}
-
 async function findPage(pageName: string): Promise<BlockEntity[]> {
   if (pageName != journalPageName) {
     return logseq.Editor.getPageBlocksTree(pageName);
@@ -190,10 +184,21 @@ function isMessageAuthorized(message: Message.ServiceMessage): boolean {
   return true;
 }
 
+type InputHandler = (ctx: Context, message: Message.ServiceMessage) => Promise<void>;
+
+function setupCommands(bot: Telegraf<Context>) {
+  bot.command("echo", (ctx) => {
+    if (isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
+      ctx.reply(ctx.message?.text ?? "");
+    }
+  });
+}
+
 function setupMessageTypes(bot: Telegraf<Context>) {
   bot.on("text", (ctx) => {
     if (isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
-      handleText(ctx, ctx.message as Message.TextMessage);
+      let handler: InputHandler = handleText as InputHandler;
+      handler(ctx, ctx.message as Message.TextMessage);
     }
   });
 
