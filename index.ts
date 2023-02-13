@@ -47,12 +47,12 @@ const settings: SettingSchemaDesc[] = [
 ];
 
 const messageHandlers: { [key: string]: InputHandler } = {
-  "text": handleText as InputHandler,
-  "photo": handlePhoto as InputHandler
+  "text": handleTextMessage as InputHandler,
+  "photo": handlePhotoMessage as InputHandler
 };
 
 const commandHandlers: { [key: string]: InputHandler } = {
-  "echo": handleEcho as InputHandler
+  "echo": handleEchoCommand as InputHandler
 };
 
 function log(message: string) {
@@ -135,11 +135,11 @@ async function writeBlocks(pageName: string, inboxName: string, texts: string[])
   return true;
 }
 
-async function handleEcho(ctx: Context, message: Message.ServiceMessage) {
+async function handleEchoCommand(ctx: Context, message: Message.ServiceMessage) {
   ctx.reply(ctx.message?.text ?? "");
 }
 
-async function handleText(ctx: Context, message: Message.TextMessage) {
+async function handleTextMessage(ctx: Context, message: Message.TextMessage) {
   if (!message?.text) {
     ctx.reply("Message is not valid");
     return;
@@ -154,7 +154,7 @@ async function handleText(ctx: Context, message: Message.TextMessage) {
   }
 }
 
-async function handlePhoto(ctx: Context, message: Message.PhotoMessage) {
+async function handlePhotoMessage(ctx: Context, message: Message.PhotoMessage) {
   if (!message?.photo || message.photo.length == 0) {
     ctx.reply("Photo is not valid");
     return;
