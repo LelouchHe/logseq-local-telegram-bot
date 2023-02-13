@@ -3,7 +3,8 @@ import { PageEntity, BlockEntity, SettingSchemaDesc } from "@logseq/libs/dist/LS
 
 // 4.* has URL is not constructor error, fallback to 3.*
 import { Telegraf, Context } from "telegraf";
-import { Message } from "typegram"
+import { MessageSubTypes } from "telegraf/typings/telegram-types";
+import { Message } from "typegram";
 
 import axios from "axios";
 import dayjs from "dayjs";
@@ -124,6 +125,10 @@ async function writeBlocks(pageName: string, inboxName: string, texts: string[])
   return true;
 }
 
+async function handleEcho(ctx: Context, message: Message.ServiceMessage) {
+  ctx.reply(ctx.message?.text ?? "");
+}
+
 async function handleText(ctx: Context, message: Message.TextMessage) {
   if (!message?.text) {
     ctx.reply("Message is not valid");
@@ -186,27 +191,35 @@ function isMessageAuthorized(message: Message.ServiceMessage): boolean {
 
 type InputHandler = (ctx: Context, message: Message.ServiceMessage) => Promise<void>;
 
+const messageHandlers: { [ key: string ]: InputHandler} = {
+  "text" : handleText as InputHandler,
+  "photo": handlePhoto as InputHandler
+};
+
+const commandHandlers: { [key: string]: InputHandler } = {
+  "echo": handleEcho as InputHandler
+};
+
 function setupCommands(bot: Telegraf<Context>) {
-  bot.command("echo", (ctx) => {
-    if (isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
-      ctx.reply(ctx.message?.text ?? "");
-    }
-  });
+  for (let commandType in commandHandlers) {
+    bot.command(commandType, (ctx) => {
+      if (ctx.message
+        && isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
+        commandHandlers[commandType](ctx, ctx.message);
+      }
+    });
+  }
 }
 
 function setupMessageTypes(bot: Telegraf<Context>) {
-  bot.on("text", (ctx) => {
-    if (isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
-      let handler: InputHandler = handleText as InputHandler;
-      handler(ctx, ctx.message as Message.TextMessage);
-    }
-  });
-
-  bot.on("photo", (ctx) => {
-    if (isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
-      handlePhoto(ctx, ctx.message as Message.PhotoMessage);
-    }
-  });
+  for (let messageType in messageHandlers) {
+    bot.on(messageType as MessageSubTypes, (ctx) => {
+      if (ctx.message
+        && isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
+        messageHandlers[messageType](ctx, ctx.message);
+      }
+    });
+  }
 }
 
 let bot: Telegraf<Context>;
