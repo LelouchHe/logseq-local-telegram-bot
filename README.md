@@ -16,18 +16,24 @@ Currently, it's still under heavy development.
 * Send text and photo to Logseg
     * inlucindg forward and reply, but only content is sent. Forward from who or reply to what is not.
 * Page and Inbox can be changed from setting page
+* Send block and its children blocks to authorized users who have send messages to Logseq before
+    * Right-click the block and choose "Local Telegram Bot: Send"
+    * This is to get its chat id without asking users to type in
+    * Once someone is removed from authorized users, it won't get any message
 
 ## Future features
 
 *not a full list, either not ordered by priority*
-* Send blocks back to Telegram
-* Send TODO notificaiton
+* Send TODO notification
 * Change Page and Inbox from Telegram
 * Fetch customized notes
 * Save and run other commands
 * Support other types of messages
 * Support channel message
 * Convert non-plain command into correct form (like DEADLINE)
+* Send blocks with embed block
+* Send page
+* Send to specific users, including those un-authorized users
 
 ## Contribute
 
