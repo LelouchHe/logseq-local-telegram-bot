@@ -50,11 +50,21 @@ class Settings {
   // key: userName
   // value: chatId
   public get chatIds(): { [key: string]: number } {
+    const users = settings.authorizedUsers;
+    let chatIds = logseq.settings!.chatIds;
+    for (let key in chatIds) {
+      if (!users.includes(key)) {
+        delete chatIds[key];
+      }
+    }
+    settings.chatIds = chatIds;
     return logseq.settings!.chatIds;
   }
   public set chatIds(ids: { [key: string]: number }) {
-    // updateSettings has to be used to store the data to settings json
-    logseq.updateSettings({"chatIds": ids});
+    // it's a bug to update settings for array/object type
+    // need to set it to something else before updating it
+    logseq.updateSettings({ "chatIds": null });
+    logseq.updateSettings({ "chatIds": ids });
   }
 }
 
@@ -378,18 +388,6 @@ async function main() {
       } else {
         showMsg("Bot Token is not valid");
       }
-    }
-
-    if (new_settings.authorizedUsers != old_settings.authorizedUsers) {
-      const users = parseAuthorizedUsers(new_settings.authorizedUsers);
-      let chatIds = settings.chatIds;
-      for (let key in chatIds) {
-        if (!users.includes(key)) {
-          delete chatIds[key];
-        }
-      }
-
-      settings.chatIds = chatIds;
     }
   });
 
