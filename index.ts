@@ -20,8 +20,13 @@ class Settings {
       logseq.updateSettings({ "chatIds": {} });
     }
   }
-  public get botToken() {
+
+  public get botToken(): string {
     return logseq.settings!.botToken;
+  }
+
+  public get isMainBot(): boolean {
+    return logseq.settings!.isMainBot;
   }
 
   public get authorizedUsers() {
@@ -79,7 +84,14 @@ const settingsSchema: SettingSchemaDesc[] = [
     description: "Telegram Bot token. In order to start you need to create Telegram bot: https://core.telegram.org/bots#3-how-do-i-create-a-bot. Create a bot with BotFather, which is essentially a bot used to create other bots. The command you need is /newbot. After you choose title, BotFaher give you the token",
     type: "string",
     default: "",
-    title: "Bot token",
+    title: "Bot Token",
+  },
+  {
+    key: "isMainBot",
+    description: "If you have multiple Logseq open at the same time, probably from different devices, only one should be set to true, to avoid conflicts of multiple bots running together",
+    type: "boolean",
+    default: false,
+    title: "Is Main Bot",
   },
   {
     key: "authorizedUsers",
@@ -238,8 +250,15 @@ async function handlePhotoMessage(ctx: Context, message: Message.PhotoMessage) {
 
   const lastPhoto = message.photo[message.photo.length - 1];
 
-  const fileUrl = await ctx.telegram.getFileLink(lastPhoto.file_id);
 
+  await writeBlocks(
+    settings.pageName,
+    settings.inboxName,
+    [`{{renderer :local_telegram_bot,${message.caption ?? "no caption"},${lastPhoto.file_id}}}`]);
+
+  /*
+  // Due to CORS, photo can't be downloaded directly into storage
+  const fileUrl = await ctx.telegram.getFileLink(lastPhoto.file_id);
   const ext = fileUrl.slice(fileUrl.lastIndexOf("."));
   const filePath = uuidv4() + ext;
   const response = await axios.get(fileUrl, { responseType: "arraybuffer" });
@@ -256,6 +275,7 @@ async function handlePhotoMessage(ctx: Context, message: Message.PhotoMessage) {
     ctx.reply("Failed to write this to Logseq");
     return;
   }
+  */
 }
 
 function isMessageAuthorized(message: Message.ServiceMessage): boolean {
@@ -364,16 +384,30 @@ async function start() {
 
     setupCommands(bot);
     setupMessageTypes(bot);
+
     setupBlockContextMenu(bot);
     setupSlashCommand(bot);
 
-    try {
-      await bot.launch();
-    } catch (e) {
-      error("Failed to launch bot");
+    logseq.App.onMacroRendererSlotted(async ({ slot, payload }) => {
+      let [type, caption, photoId] = payload.arguments;
+      if (type !== ':local_telegram_bot') {
+        return;
+      }
+
+      // FIXME: use caption, instead of alt
+      const photoUrl = await bot.telegram.getFileLink(photoId);
+      logseq.provideUI({
+        slot,
+        template: `<img src="${photoUrl}" alt="${caption}" />`,
+      });
+    });
+
+    if (settings.isMainBot) {
+      bot.launch();
+      log("Bot is launched");
     }
 
-    log("Start");
+    log("Bot is ready");
   }
 }
 
@@ -383,10 +417,22 @@ async function main() {
   logseq.useSettingsSchema(settingsSchema);
   logseq.onSettingsChanged((new_settings, old_settings) => {
     if (new_settings.botToken != old_settings.botToken) {
-      if (new_settings.botToken.match(BOT_TOKEN_REGEX)) {
+      if (settings.botToken.match(BOT_TOKEN_REGEX)) {
         start();
       } else {
         showMsg("Bot Token is not valid");
+      }
+    }
+
+    if (new_settings.isMainBot != old_settings.isMainBot) {
+      if (bot) {
+        if (settings.isMainBot) {
+          bot.launch();
+          log("Bot is launched");
+        } else {
+          bot.stop();
+          log("Bot is stopped");
+        }
       }
     }
   });
