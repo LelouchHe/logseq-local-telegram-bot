@@ -2,25 +2,30 @@ import "@logseq/libs";
 import { PageEntity, BlockEntity, SettingSchemaDesc } from "@logseq/libs/dist/LSPlugin.user";
 
 // 4.* has URL is not constructor error, fallback to 3.*
-import { Telegraf, Context } from "telegraf";
-import { MessageSubTypes } from "telegraf/typings/telegram-types";
+import { Telegraf, Context  } from "telegraf";
+import { MessageSubTypes  } from "telegraf/typings/telegram-types";
 import { Message } from "typegram";
 
 import axios from "axios";
 import dayjs from "dayjs";
 import { v4 as uuidv4 } from "uuid";
+import { marked } from "marked"
 
 type InputHandler = (ctx: Context, message: Message.ServiceMessage) => Promise<void>;
+type OperationHandler = (bot: Telegraf<Context>, blockId: string) => Promise<void>;
 
 class Settings {
+  constructor() {
+    if (!logseq.settings!.chatIds) {
+      logseq.updateSettings({ "chatIds": {} });
+    }
+  }
   public get botToken() {
     return logseq.settings!.botToken;
   }
 
   public get authorizedUsers() {
-    return logseq.settings!.authorizedUsers
-            .split(",")
-            .map((rawUserName: string) => rawUserName.trim());
+    return parseAuthorizedUsers(logseq.settings!.authorizedUsers);
   }
   public set authorizedUsers(users: string[]) {
     logseq.settings!.authorizedUsers = users.join(",");
@@ -39,12 +44,24 @@ class Settings {
   public set inboxName(name: string) {
     logseq.settings!.inboxName = name;
   }
+
+  // below are internal persistent data
+
+  // key: userName
+  // value: chatId
+  public get chatIds(): { [key: string]: number } {
+    return logseq.settings!.chatIds;
+  }
+  public set chatIds(ids: { [key: string]: number }) {
+    // updateSettings has to be used to store the data to settings json
+    logseq.updateSettings({"chatIds": ids});
+  }
 }
 
-const settings = new Settings();
+let settings: Settings;
 
-const journalPageName = "Journal";
-const botTokenRegex = /^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$/;
+const JOURNAL_PAGE_NAME = "Journal";
+const BOT_TOKEN_REGEX = /^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$/;
 
 const settingsSchema: SettingSchemaDesc[] = [
   {
@@ -83,7 +100,12 @@ const messageHandlers: { [key: string]: InputHandler } = {
 };
 
 const commandHandlers: { [key: string]: InputHandler } = {
-  "echo": handleEchoCommand as InputHandler
+  "register": handleRegisterCommand as InputHandler,
+  "help": handleHelpCommand as InputHandler
+};
+
+const blockContextMenuHandlers: { [key: string]: OperationHandler } = {
+  "Send": handleSendOperation as OperationHandler
 };
 
 function log(message: string) {
@@ -94,8 +116,16 @@ function error(message: string) {
   console.error("[Local Telegram Bot] " + message);
 }
 
+function showMsg(message: string) {
+  logseq.UI.showMsg("[Local Telegram Bot] " + message);
+}
+
+function parseAuthorizedUsers(d: string): string[] {
+  return d.split(",").map((rawUserName: string) => rawUserName.trim());
+}
+
 async function findPage(pageName: string): Promise<BlockEntity[]> {
-  if (pageName != journalPageName) {
+  if (pageName != JOURNAL_PAGE_NAME) {
     return logseq.Editor.getPageBlocksTree(pageName);
   }
 
@@ -166,8 +196,13 @@ async function writeBlocks(pageName: string, inboxName: string, texts: string[])
   return true;
 }
 
-async function handleEchoCommand(ctx: Context, message: Message.ServiceMessage) {
-  ctx.reply(ctx.message?.text ?? "");
+async function handleRegisterCommand(ctx: Context, message: Message.ServiceMessage) {
+  ctx.reply(`${message.from!.username} have been successfully registered.
+            You are eligible to receive message from now`);
+}
+
+async function handleHelpCommand(ctx: Context, message: Message.ServiceMessage) {
+  ctx.reply(`this is help: ${ctx.message?.text}`);
 }
 
 async function handleTextMessage(ctx: Context, message: Message.TextMessage) {
@@ -226,6 +261,13 @@ function isMessageAuthorized(message: Message.ServiceMessage): boolean {
     }
   }
 
+  const chatIds = settings.chatIds;
+  if (!(message.from.username in chatIds)) {
+    chatIds[message.from.username] = message.chat.id;
+  }
+
+  settings.chatIds = chatIds;
+
   return true;
 }
 
@@ -251,47 +293,108 @@ function setupMessageTypes(bot: Telegraf<Context>) {
   }
 }
 
+function convertBlocksToText(root: BlockEntity, tab: string, indent: string): string {
+  if (!root) {
+    error("Block doesn't include content");
+    return "";
+  }
+
+  let text = indent + root.content + "\n";
+  if (root.children) {
+    for (let child of root.children) {
+      text += convertBlocksToText(child as BlockEntity, tab, indent + tab);
+    }
+  }
+
+  return text;
+}
+
+async function handleSendOperation(bot: Telegraf<Context>, blockId: string) {
+  if (Object.keys(settings.chatIds).length == 0) {
+    showMsg("Authorized users need to \"/register\" first");
+    return;
+  }
+  const root = await logseq.Editor.getBlock(blockId, { includeChildren: true });
+  if (!root) {
+    showMsg("Fail to get block");
+    return;
+  }
+
+  const text = convertBlocksToText(root, "\t\t", "");
+  const html = marked.parseInline(text);
+  for (let key in settings.chatIds) {
+    bot.telegram.sendMessage(settings.chatIds[key], html, { parse_mode: "HTML" });
+  }
+}
+
+function setupBlockContextMenu(bot: Telegraf<Context>) {
+  for (let key in blockContextMenuHandlers) {
+    logseq.Editor.registerBlockContextMenuItem(`Local Telegram Bot: ${key}`, async (e) => {
+      blockContextMenuHandlers[key](bot, e.uuid);
+    });
+  }
+}
+
+function setupSlashCommand(bot: Telegraf<Context>) {
+  logseq.Editor.registerSlashCommand("Local Telegram Bot: Send", async (e) => {
+    handleSendOperation(bot, e.uuid);
+  });
+}
+
+// global bot
 let bot: Telegraf<Context>;
 
 async function start() {
   if (bot) {
-    await bot.stop();
+    // restart with new botToken
+    bot.token = settings.botToken;
+  } else {
+    // start first time
+    bot = new Telegraf(settings.botToken);
+
+    setupCommands(bot);
+    setupMessageTypes(bot);
+    setupBlockContextMenu(bot);
+    setupSlashCommand(bot);
+
+    try {
+      await bot.launch();
+    } catch (e) {
+      error("Failed to launch bot");
+    }
+
+    log("Start");
   }
-
-  bot = new Telegraf(settings.botToken);
-
-  setupCommands(bot);
-  setupMessageTypes(bot);
-  logseq.Editor.registerBlockContextMenuItem("Local Telegram Bot: Send", async (e) => {
-    console.log(e);
-  });
-  logseq.Editor.registerSlashCommand("Local Telegram Bot: Send", async (e) => {
-    console.log(e);
-  });
-
-  try {
-    await bot.launch();
-  } catch (e) {
-    error("Failed to launch bot");
-  }
-
-  log("Start");
 }
 
 async function main() {
+  settings = new Settings();
+
   logseq.useSettingsSchema(settingsSchema);
   logseq.onSettingsChanged((new_settings, old_settings) => {
     if (new_settings.botToken != old_settings.botToken) {
-      if (new_settings.botToken.match(botTokenRegex)) {
+      if (new_settings.botToken.match(BOT_TOKEN_REGEX)) {
         start();
       } else {
-        logseq.UI.showMsg("[Local Telegram Bot] Bot Token is not valid");
+        showMsg("Bot Token is not valid");
       }
-    } 
+    }
+
+    if (new_settings.authorizedUsers != old_settings.authorizedUsers) {
+      const users = parseAuthorizedUsers(new_settings.authorizedUsers);
+      let chatIds = settings.chatIds;
+      for (let key in chatIds) {
+        if (!users.includes(key)) {
+          delete chatIds[key];
+        }
+      }
+
+      settings.chatIds = chatIds;
+    }
   });
 
-  if (!settings.botToken.match(botTokenRegex)) {
-    logseq.UI.showMsg("[Local Telegram Bot] Bot Token is not valid");
+  if (!settings.botToken.match(BOT_TOKEN_REGEX)) {
+    showMsg("Bot Token is not valid");
     logseq.showSettingsUI();
     return;
   }
