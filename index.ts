@@ -37,6 +37,10 @@ class Settings {
   }
 
   public get pageName() {
+    if (!logseq.settings!.pageName) {
+      this.pageName = JOURNAL_PAGE_NAME;
+    }
+
     return logseq.settings!.pageName;
   }
   public set pageName(name: string) {
@@ -102,7 +106,7 @@ const settingsSchema: SettingSchemaDesc[] = [
   },
   {
     key: "pageName",
-    description: "The name of the page that all regular messages from Telegram are added to. \"Journal\" is reserved for today's Journal",
+    description: "The name of the page that all regular messages from Telegram are added to. \"Journal\" is reserved for today's Journal, and it's the default. The page should be available.",
     type: "string",
     default: "Journal",
     title: "Page Name",

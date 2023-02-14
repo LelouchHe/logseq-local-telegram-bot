@@ -7,7 +7,10 @@ Currently, it's still under heavy development.
 ## How to use it
 
 1. [Create a Telegram bot](https://core.telegram.org/bots#3-how-do-i-create-a-bot).
-2. Complete the setting. The bot token is required. The authorized users is also required to avoid abuse of the bot.
+2. Complete the setting
+    * "Bot Token" is required
+    * "Is Main Bot" is required for the main Logseq to handle requests from Telegram. If you have multiple Logseq open at same time, probably from different devices, make sure only one of them is set to main bot, to avoid conflicts.
+    * "Authorized Users" is also required to avoid abuse of the bot.
 3. Send texts and photos to this bot directly. The texts and photos will be automatically writen to the specified page and inbox
 4. **NOTE**: since it's a local bot, the logseq needs to be open all the time, or the bot won't run and the data sent from Telegram might be expired before bot could fetch them.
 
