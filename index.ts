@@ -401,6 +401,7 @@ async function start() {
       // FIXME: use caption, instead of alt
       const photoUrl = await bot.telegram.getFileLink(photoId);
       logseq.provideUI({
+        key: photoId,
         slot,
         template: `<img src="${photoUrl}" alt="${caption}" />`,
       });
