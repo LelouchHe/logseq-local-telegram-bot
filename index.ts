@@ -6,9 +6,6 @@ import { Telegraf, Context  } from "telegraf";
 import { MessageSubTypes  } from "telegraf/typings/telegram-types";
 import { Message } from "typegram";
 
-import axios from "axios";
-import dayjs from "dayjs";
-import { v4 as uuidv4 } from "uuid";
 import { marked } from "marked"
 
 type InputHandler = (ctx: Context, message: Message.ServiceMessage) => Promise<void>;
@@ -253,33 +250,10 @@ async function handlePhotoMessage(ctx: Context, message: Message.PhotoMessage) {
   }
 
   const lastPhoto = message.photo[message.photo.length - 1];
-
-
   await writeBlocks(
     settings.pageName,
     settings.inboxName,
     [`{{renderer :local_telegram_bot,${message.caption ?? "no caption"},${lastPhoto.file_id}}}`]);
-
-  /*
-  // Due to CORS, photo can't be downloaded directly into storage
-  const fileUrl = await ctx.telegram.getFileLink(lastPhoto.file_id);
-  const ext = fileUrl.slice(fileUrl.lastIndexOf("."));
-  const filePath = uuidv4() + ext;
-  const response = await axios.get(fileUrl, { responseType: "arraybuffer" });
-
-  const storage = logseq.Assets.makeSandboxStorage();
-  await storage.setItem(filePath, response.data);
-  
-  const fullFilePath = `./assets/storages/${logseq.baseInfo.id}/${filePath}`;
-  const text = `![${message.caption ?? ""}](${fullFilePath})`;
-  if (!await writeBlocks(
-      settings.pageName,
-      settings.inboxName,
-      [ text ])) {
-    ctx.reply("Failed to write this to Logseq");
-    return;
-  }
-  */
 }
 
 function isMessageAuthorized(message: Message.ServiceMessage): boolean {
@@ -398,6 +372,7 @@ async function start() {
         return;
       }
 
+      // photo url from Telegram is not permanent, need to fetch everytime
       // FIXME: use caption, instead of alt
       const photoUrl = await bot.telegram.getFileLink(photoId);
       logseq.provideUI({
