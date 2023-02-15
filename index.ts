@@ -437,7 +437,7 @@ async function setupTimedJob(bot: Telegraf<Context>) {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const deadlineList = await findNotDone(tomorrow, "deadline");
     for (let deadline of deadlineList) {
-      handleSendOperation(bot, scheduled.uuid);
+      handleSendOperation(bot, deadline.uuid);
     }
   });
 }
@@ -464,7 +464,7 @@ async function start() {
     setupMacro(bot);
 
     // job at certain time
-    setupTimedJob(bot);
+    // setupTimedJob(bot);
 
     if (settings.isMainBot) {
       bot.launch();
