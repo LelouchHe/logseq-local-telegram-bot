@@ -78,6 +78,9 @@ let settings: Settings;
 
 const JOURNAL_PAGE_NAME = "Journal";
 const BOT_TOKEN_REGEX = /^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$/;
+const SCHEDULED_JOB = 0;
+const DEADLINE_JOB = 1;
+const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
 
 const settingsSchema: SettingSchemaDesc[] = [
   {
@@ -157,38 +160,19 @@ function getDateString(date: Date) {
   return `${d.year}${d.month}${d.day}`;
 }
 
-async function findScheduledNotDone(date: Date) {
+async function findNotDone(date: Date, type: string) {
   const dateString = getDateString(date);
   const ret: Array<PageEntity[]> | undefined = await logseq.DB.datascriptQuery(`
     [:find (pull ?b [*])
      :where
-     [?b :block/scheduled ?d]
+     [?b :block/${type} ?d]
      [(= ?d ${dateString})]
      [?b :block/marker ?marker]
      [(not= #{"DONE"} ?marker)]]
     `);
   
   if (!ret) {
-    log(`There are no NotDone scheduled for ${dateString}`);
-    return [];
-  }
-
-  return ret.flat();
-}
-
-async function findDeadlineNotDone(date: Date) {
-  const dateString = getDateString(date);
-  const ret: Array<PageEntity[]> | undefined = await logseq.DB.datascriptQuery(`
-    [:find (pull ?b [*])
-     :where
-     [?b :block/deadline ?d]
-     [(= ?d ${dateString})]
-     [?b :block/marker ?marker]
-     [(not= #{"DONE"} ?marker)]]
-    `);
-
-  if (!ret) {
-    log(`There are no NotDone deadline for ${dateString}`);
+    log(`There are no NotDone ${type} for ${dateString}`);
     return [];
   }
 
@@ -409,15 +393,56 @@ function setupMacro(bot: Telegraf<Context>) {
   });
 }
 
-async function setupTimedJob(bot: Telegraf<Context>) {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const scheduledList = await findScheduledNotDone(tomorrow);
-  for (let scheduled of scheduledList) {
-    handleSendOperation(bot, scheduled.uuid);
+function getDelayInMs(time: Date) {
+  const now = new Date();
+  time.setFullYear(now.getFullYear());
+  time.setMonth(now.getMonth());
+  time.setDate(now.getDate());
+
+  if (time < now) {
+    time.setTime(time.getTime() + ONE_DAY_IN_MS);
   }
+
+  return time.getTime() - now.getTime();
 }
 
+const jobIds: number[] = [ 0, 0 ];
+function runAtEveryday(which: number, time: Date, cb: () => void) {
+  const delay = getDelayInMs(time);
+  jobIds[which] = setTimeout(() => {
+    log(`job(${which}) is running at ${new Date().toLocaleString()}`);
+    cb();
+    jobIds[which] = runAtEveryday(which, time, cb);
+  }, delay);
+
+  log(`job(${which}) will run in ${delay} ms`);
+
+  return jobIds[which];
+}
+
+async function setupTimedJob(bot: Telegraf<Context>) {
+  runAtEveryday(SCHEDULED_JOB, new Date(), async () => {
+    console.log(jobIds);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const scheduledList = await findNotDone(tomorrow, "scheduled");
+    for (let scheduled of scheduledList) {
+      handleSendOperation(bot, scheduled.uuid);
+    }
+  });
+
+  runAtEveryday(DEADLINE_JOB, new Date(), async () => {
+    console.log(jobIds);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const deadlineList = await findNotDone(tomorrow, "deadline");
+    for (let deadline of deadlineList) {
+      handleSendOperation(bot, scheduled.uuid);
+    }
+  });
+}
+
+// FIXME: start order should be refactored to remove global bot
 // global bot
 let bot: Telegraf<Context>;
 
