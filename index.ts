@@ -147,19 +147,60 @@ function parseAuthorizedUsers(d: string): string[] {
   return d.split(",").map((rawUserName: string) => rawUserName.trim());
 }
 
+function getDateString(date: Date) {
+  const d = {
+    day: `${date.getDate()}`.padStart(2, "0"),
+    month: `${date.getMonth() + 1}`.padStart(2, "0"),
+    year: date.getFullYear()
+  }
+
+  return `${d.year}${d.month}${d.day}`;
+}
+
+async function findScheduledNotDone(date: Date) {
+  const dateString = getDateString(date);
+  const ret: Array<PageEntity[]> | undefined = await logseq.DB.datascriptQuery(`
+    [:find (pull ?b [*])
+     :where
+     [?b :block/scheduled ?d]
+     [(= ?d ${dateString})]
+     [?b :block/marker ?marker]
+     [(not= #{"DONE"} ?marker)]]
+    `);
+  
+  if (!ret) {
+    log(`There are no NotDone scheduled for ${dateString}`);
+    return [];
+  }
+
+  return ret.flat();
+}
+
+async function findDeadlineNotDone(date: Date) {
+  const dateString = getDateString(date);
+  const ret: Array<PageEntity[]> | undefined = await logseq.DB.datascriptQuery(`
+    [:find (pull ?b [*])
+     :where
+     [?b :block/deadline ?d]
+     [(= ?d ${dateString})]
+     [?b :block/marker ?marker]
+     [(not= #{"DONE"} ?marker)]]
+    `);
+
+  if (!ret) {
+    log(`There are no NotDone deadline for ${dateString}`);
+    return [];
+  }
+
+  return ret.flat();
+}
+
 async function findPage(pageName: string): Promise<BlockEntity[]> {
   if (pageName != JOURNAL_PAGE_NAME) {
     return logseq.Editor.getPageBlocksTree(pageName);
   }
 
-  const d = new Date();
-  const todayDateObj = {
-    day: `${d.getDate()}`.padStart(2, "0"),
-    month: `${d.getMonth() + 1}`.padStart(2, "0"),
-    year: d.getFullYear(),
-  };
-  const todayDate = `${todayDateObj.year}${todayDateObj.month}${todayDateObj.day}`;
-
+  const todayDate = getDateString(new Date());
   const ret: Array<PageEntity[]> | undefined = await logseq.DB.datascriptQuery(`
       [:find (pull ?p [*])
        :where
@@ -332,6 +373,7 @@ async function handleSendOperation(bot: Telegraf<Context>, blockId: string) {
   const html = marked.parseInline(text);
   for (let key in settings.chatIds) {
     bot.telegram.sendMessage(settings.chatIds[key], html, { parse_mode: "HTML" });
+    log("Send message");
   }
 }
 
@@ -381,6 +423,13 @@ async function start() {
         template: `<img src="${photoUrl}" alt="${caption}" />`,
       });
     });
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const scheduledList = await findScheduledNotDone(tomorrow);
+    for (let scheduled of scheduledList) {
+      handleSendOperation(bot, scheduled.uuid);
+    }
 
     if (settings.isMainBot) {
       bot.launch();
