@@ -391,6 +391,33 @@ function setupSlashCommand(bot: Telegraf<Context>) {
   });
 }
 
+function setupMacro(bot: Telegraf<Context>) {
+  logseq.App.onMacroRendererSlotted(async ({ slot, payload }) => {
+    let [type, caption, photoId] = payload.arguments;
+    if (type !== ':local_telegram_bot') {
+      return;
+    }
+
+    // photo url from Telegram is not permanent, need to fetch everytime
+    // FIXME: use caption, instead of alt
+    const photoUrl = await bot.telegram.getFileLink(photoId);
+    logseq.provideUI({
+      key: photoId,
+      slot,
+      template: `<img src="${photoUrl}" alt="${caption}" />`,
+    });
+  });
+}
+
+async function setupTimedJob(bot: Telegraf<Context>) {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const scheduledList = await findScheduledNotDone(tomorrow);
+  for (let scheduled of scheduledList) {
+    handleSendOperation(bot, scheduled.uuid);
+  }
+}
+
 // global bot
 let bot: Telegraf<Context>;
 
@@ -402,34 +429,17 @@ async function start() {
     // start first time
     bot = new Telegraf(settings.botToken);
 
+    // inbound message
     setupCommands(bot);
     setupMessageTypes(bot);
 
+    // logseq operation
     setupBlockContextMenu(bot);
     setupSlashCommand(bot);
+    setupMacro(bot);
 
-    logseq.App.onMacroRendererSlotted(async ({ slot, payload }) => {
-      let [type, caption, photoId] = payload.arguments;
-      if (type !== ':local_telegram_bot') {
-        return;
-      }
-
-      // photo url from Telegram is not permanent, need to fetch everytime
-      // FIXME: use caption, instead of alt
-      const photoUrl = await bot.telegram.getFileLink(photoId);
-      logseq.provideUI({
-        key: photoId,
-        slot,
-        template: `<img src="${photoUrl}" alt="${caption}" />`,
-      });
-    });
-
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const scheduledList = await findScheduledNotDone(tomorrow);
-    for (let scheduled of scheduledList) {
-      handleSendOperation(bot, scheduled.uuid);
-    }
+    // job at certain time
+    setupTimedJob(bot);
 
     if (settings.isMainBot) {
       bot.launch();
