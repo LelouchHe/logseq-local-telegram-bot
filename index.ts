@@ -29,26 +29,33 @@ class Settings {
   public get authorizedUsers() {
     return parseAuthorizedUsers(logseq.settings!.authorizedUsers);
   }
-  public set authorizedUsers(users: string[]) {
-    logseq.settings!.authorizedUsers = users.join(",");
-  }
 
   public get pageName() {
     if (!logseq.settings!.pageName) {
-      this.pageName = JOURNAL_PAGE_NAME;
+      logseq.settings!.pageName = JOURNAL_PAGE_NAME;
     }
 
     return logseq.settings!.pageName;
-  }
-  public set pageName(name: string) {
-    logseq.settings!.pageName = name;
   }
 
   public get inboxName() {
     return logseq.settings!.inboxName;
   }
-  public set inboxName(name: string) {
-    logseq.settings!.inboxName = name;
+
+  public get scheduledNotificationTime() {
+    if (logseq.settings!.scheduledNotificationTime) {
+      return new Date(logseq.settings!.scheduledNotificationTime);
+    } else {
+      return null;
+    }
+  }
+
+  public get deadlineNotificationTime() {
+    if (logseq.settings!.deadlineNotificationTime) {
+      return new Date(logseq.settings!.deadlineNotificationTime);
+    } else {
+      return null;
+    }
   }
 
   // below are internal persistent data
@@ -78,9 +85,13 @@ let settings: Settings;
 
 const JOURNAL_PAGE_NAME = "Journal";
 const BOT_TOKEN_REGEX = /^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$/;
-const SCHEDULED_JOB = 0;
-const DEADLINE_JOB = 1;
-const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
+const ONE_DAY_IN_SECOND = 60;
+const SCHEDULED_NOTIFICATION_JOB = "ScheduledTimedJob";
+const DEADLINE_NOTIFICATION_JOB = "DeadlineNotificationJob";
+const JOB_TYPES: { [ key: string ]: string } = {
+  [SCHEDULED_NOTIFICATION_JOB]: "scheduled",
+  [DEADLINE_NOTIFICATION_JOB]: "deadline"
+};
 
 const settingsSchema: SettingSchemaDesc[] = [
   {
@@ -117,6 +128,22 @@ const settingsSchema: SettingSchemaDesc[] = [
     type: "string",
     default: "#Inbox",
     title: "Inbox Name",
+  },
+  {
+    key: "scheduledNotificationTime",
+    description: "The local time of notificaiton for not-done task with scheduled date. The message should be sent one day before the scheduled at this specific time. Clearing it disable this feature",
+    type: "string",
+    default: "",
+    title: "Scheduled Notification Time",
+    inputAs: "datetime-local"
+  },
+  {
+    key: "deadlineNotificationTime",
+    description: "The local time of notificaiton for not-done task with deadline date. The message should be sent one day before the deadline at this specific time. Clearing it disables this feature",
+    type: "string",
+    default: "",
+    title: "Deadline Notification Time",
+    inputAs: "datetime-local"
   }
 ];
 
@@ -160,7 +187,7 @@ function getDateString(date: Date) {
   return `${d.year}${d.month}${d.day}`;
 }
 
-async function findNotDone(date: Date, type: string) {
+async function findTask(date: Date, type: string, status: string[]) {
   const dateString = getDateString(date);
   const ret: Array<PageEntity[]> | undefined = await logseq.DB.datascriptQuery(`
     [:find (pull ?b [*])
@@ -168,7 +195,7 @@ async function findNotDone(date: Date, type: string) {
      [?b :block/${type} ?d]
      [(= ?d ${dateString})]
      [?b :block/marker ?marker]
-     [(not= #{"DONE"} ?marker)]]
+     [(contains? #{${status.map(s => ("\"" + s + "\"")).join(" ")}} ?marker)]]
     `);
   
   if (!ret) {
@@ -418,53 +445,55 @@ function setupMacro(bot: Telegraf<Context>) {
   });
 }
 
-function getDelayInMs(time: Date) {
-  const now = new Date();
-  time.setFullYear(now.getFullYear());
-  time.setMonth(now.getMonth());
-  time.setDate(now.getDate());
-
-  if (time < now) {
-    time.setTime(time.getTime() + ONE_DAY_IN_MS);
+function getDelayInMs(time: Date, seconds: number) {
+  let target = time.getTime();
+  const now = Date.now();
+  if (target < now) {
+    target += (1 + Math.floor((now - target) / seconds / 1000)) * seconds * 1000;
   }
 
-  return time.getTime() - now.getTime();
+  return target - now;
 }
 
-const jobIds: number[] = [ 0, 0 ];
-function runAtEveryday(which: number, time: Date, cb: () => void) {
-  const delay = getDelayInMs(time);
-  jobIds[which] = setTimeout(() => {
-    log(`job(${which}) is running at ${new Date().toLocaleString()}`);
+const jobIds: { [ key: string ]: number } = {};
+function runAtInterval(name: string, time: Date, seconds: number, cb: () => void) {
+  const delay = getDelayInMs(time, seconds);
+  jobIds[name] = setTimeout(() => {
+    log(`job(${name}: ${jobIds[name]}) is running at ${new Date().toLocaleString()}`);
     cb();
-    jobIds[which] = runAtEveryday(which, time, cb);
+    runAtInterval(name, time, seconds, cb);
   }, delay);
 
-  log(`job(${which}) will run in ${delay} ms`);
-
-  return jobIds[which];
+  log(`job(${name}: ${jobIds[name]}) will run in ${delay} ms`);
 }
 
-async function setupTimedJob(bot: Telegraf<Context>) {
-  runAtEveryday(SCHEDULED_JOB, new Date(), async () => {
-    console.log(jobIds);
+function startTimedJob(bot: Telegraf<Context>, name: string, time: Date) {
+  runAtInterval(name, time, ONE_DAY_IN_SECOND, async () => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const scheduledList = await findNotDone(tomorrow, "scheduled");
-    for (let scheduled of scheduledList) {
-      handleSendOperation(bot, scheduled.uuid);
+    const tasks = await findTask(tomorrow, JOB_TYPES[name], ["TODO", "DOING", "NOW", "LATER", "WAITING"]);
+    for (let task of tasks) {
+      handleSendOperation(bot, task.uuid);
     }
   });
+}
 
-  runAtEveryday(DEADLINE_JOB, new Date(), async () => {
-    console.log(jobIds);
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const deadlineList = await findNotDone(tomorrow, "deadline");
-    for (let deadline of deadlineList) {
-      handleSendOperation(bot, deadline.uuid);
-    }
-  });
+function updateTimedJob(bot: Telegraf<Context>, name: string, time: Date | null) {
+  log(`job(${name}: ${jobIds[name]}) is cancelled`);
+  clearTimeout(jobIds[name]);
+  if (time) {
+    startTimedJob(bot, name, time);
+  }
+}
+
+function setupTimedJob(bot: Telegraf<Context>) {
+  if (settings.scheduledNotificationTime) {
+    startTimedJob(bot, SCHEDULED_NOTIFICATION_JOB, settings.scheduledNotificationTime);
+  }
+
+  if (settings.deadlineNotificationTime) {
+    startTimedJob(bot, DEADLINE_NOTIFICATION_JOB, settings.deadlineNotificationTime);
+  }
 }
 
 // FIXME: start order should be refactored to remove global bot
@@ -489,7 +518,7 @@ async function start() {
     setupMacro(bot);
 
     // job at certain time
-    // setupTimedJob(bot);
+    setupTimedJob(bot);
 
     if (settings.isMainBot) {
       bot.launch();
@@ -504,6 +533,8 @@ async function main() {
   settings = new Settings();
 
   logseq.useSettingsSchema(settingsSchema);
+
+  // FIXME: refactor settings change
   logseq.onSettingsChanged((new_settings, old_settings) => {
     if (new_settings.botToken != old_settings.botToken) {
       if (settings.botToken.match(BOT_TOKEN_REGEX)) {
@@ -523,6 +554,14 @@ async function main() {
           log("Bot is stopped");
         }
       }
+    }
+
+    if (new_settings.scheduledNotificationTime != old_settings.scheduledNotificationTime) {
+      updateTimedJob(bot, SCHEDULED_NOTIFICATION_JOB, settings.scheduledNotificationTime);
+    }
+
+    if (new_settings.deadlineNotificationTime != old_settings.deadlineNotificationTime) {
+      updateTimedJob(bot, DEADLINE_NOTIFICATION_JOB, settings.deadlineNotificationTime);
     }
   });
 
