@@ -199,7 +199,7 @@ async function findTask(date: Date, type: string, status: string[]) {
     `);
   
   if (!ret) {
-    log(`There are no NotDone ${type} for ${dateString}`);
+    log(`There are no tasks with ${type} for ${dateString}`);
     return [];
   }
 
@@ -275,7 +275,7 @@ function registerCommandHandlerGenerator() {
   return {
     type: "register",
     handler: async (ctx: Context, message: Message.ServiceMessage) => {
-      ctx.reply(`${message.from!.username} have been successfully registered. You are eligible to receive message from now`);
+      ctx.reply(`${message.from!.username} has been successfully registered. You are eligible to receive messages from now`);
     }
   }
 }
