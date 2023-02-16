@@ -85,7 +85,7 @@ let settings: Settings;
 
 const JOURNAL_PAGE_NAME = "Journal";
 const BOT_TOKEN_REGEX = /^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$/;
-const ONE_DAY_IN_SECOND = 60;
+const ONE_DAY_IN_SECOND = 24 * 60 * 60;
 const SCHEDULED_NOTIFICATION_JOB = "ScheduledTimedJob";
 const DEADLINE_NOTIFICATION_JOB = "DeadlineNotificationJob";
 const JOB_TYPES: { [ key: string ]: string } = {
