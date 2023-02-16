@@ -120,15 +120,15 @@ const settingsSchema: SettingSchemaDesc[] = [
   }
 ];
 
-const messageHandlers: { [key: string]: InputHandler } = {
-  "text": handleTextMessage as InputHandler,
-  "photo": handlePhotoMessage as InputHandler
-};
+const messageHandlers: { type: string, handler: InputHandler }[] = [
+  textMessageHandlerGenerator(),
+  photoMessageHandlerGenerator()
+];
 
-const commandHandlers: { [key: string]: InputHandler } = {
-  "register": handleRegisterCommand as InputHandler,
-  "help": handleHelpCommand as InputHandler
-};
+const commandHandlers: { type: string, handler: InputHandler }[] = [
+  registerCommandHandlerGenerator(),
+  helpCommandHandlerGenerator()
+];
 
 const blockContextMenuHandlers: { [key: string]: OperationHandler } = {
   "Send": handleSendOperation as OperationHandler
@@ -244,41 +244,65 @@ async function writeBlocks(pageName: string, inboxName: string, texts: string[])
   return true;
 }
 
-async function handleRegisterCommand(ctx: Context, message: Message.ServiceMessage) {
-  ctx.reply(`${message.from!.username} have been successfully registered.
-            You are eligible to receive message from now`);
-}
-
-async function handleHelpCommand(ctx: Context, message: Message.ServiceMessage) {
-  ctx.reply(`this is help: ${ctx.message?.text}`);
-}
-
-async function handleTextMessage(ctx: Context, message: Message.TextMessage) {
-  if (!message?.text) {
-    ctx.reply("Message is not valid");
-    return;
+function registerCommandHandlerGenerator() {
+  return {
+    type: "register",
+    handler: async (ctx: Context, message: Message.ServiceMessage) => {
+      ctx.reply(`${message.from!.username} have been successfully registered. You are eligible to receive message from now`);
+    }
   }
+}
 
-  if (!await writeBlocks(
+function helpCommandHandlerGenerator() {
+  return {
+    type: "help",
+    handler: async (ctx: Context, message: Message.ServiceMessage) => {
+      ctx.reply(`this is help: ${ctx.message?.text}`);
+    }
+  }
+}
+
+function textMessageHandlerGenerator() {
+  async function handler(ctx: Context, message: Message.TextMessage) {
+    if (!message?.text) {
+      ctx.reply("Message is not valid");
+      return;
+    }
+
+    if (!await writeBlocks(
       settings.pageName,
       settings.inboxName,
-      [ message.text ])) {
-    ctx.reply("Failed to write this to Logseq");
-    return;
+      [message.text])) {
+      ctx.reply("Failed to write this to Logseq");
+      return;
+    }
   }
+
+  return {
+    type: "text",
+    handler: handler as InputHandler
+  };
+
 }
 
-async function handlePhotoMessage(ctx: Context, message: Message.PhotoMessage) {
-  if (!message?.photo || message.photo.length == 0) {
-    ctx.reply("Photo is not valid");
-    return;
+function photoMessageHandlerGenerator() {
+  async function handler(ctx: Context, message: Message.PhotoMessage) {
+    if (!message?.photo || message.photo.length == 0) {
+      ctx.reply("Photo is not valid");
+      return;
+    }
+
+    const lastPhoto = message.photo[message.photo.length - 1];
+    await writeBlocks(
+      settings.pageName,
+      settings.inboxName,
+      [`{{renderer :local_telegram_bot,${message.caption ?? "no caption"},${lastPhoto.file_id}}}`]);
   }
 
-  const lastPhoto = message.photo[message.photo.length - 1];
-  await writeBlocks(
-    settings.pageName,
-    settings.inboxName,
-    [`{{renderer :local_telegram_bot,${message.caption ?? "no caption"},${lastPhoto.file_id}}}`]);
+  return {
+    type: "photo",
+    handler : handler as InputHandler
+  };
 }
 
 function isMessageAuthorized(message: Message.ServiceMessage): boolean {
@@ -305,22 +329,23 @@ function isMessageAuthorized(message: Message.ServiceMessage): boolean {
 }
 
 function setupCommands(bot: Telegraf<Context>) {
-  for (let commandType in commandHandlers) {
-    bot.command(commandType, (ctx) => {
+  for (let handler of commandHandlers) {
+    bot.command(handler.type, (ctx) => {
       if (ctx.message
-        && isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
-        commandHandlers[commandType](ctx, ctx.message);
+          && isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
+        handler.handler(ctx, ctx.message);
       }
     });
   }
 }
 
 function setupMessageTypes(bot: Telegraf<Context>) {
-  for (let messageType in messageHandlers) {
-    bot.on(messageType as MessageSubTypes, (ctx) => {
+  for (let handler of messageHandlers) {
+    // FIXME: no way to check union type?
+    bot.on(handler.type as MessageSubTypes, (ctx) => {
       if (ctx.message
-        && isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
-        messageHandlers[messageType](ctx, ctx.message);
+          && isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
+        handler.handler(ctx, ctx.message);
       }
     });
   }
