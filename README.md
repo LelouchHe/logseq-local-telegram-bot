@@ -1,6 +1,6 @@
 ## Local Telegram Bot
 
-This is a local Telegram bot that can handle messages from and share notes with specific Telegram users. It's designed to be used as another way to use Logseq from mobile, when existing sync feature is not available yet for non-iCloud users.
+This is a local Telegram bot plugin that can handle messages from and share notes with eligible Telegram users. It's designed to be used as another way to use Logseq from mobile, when existing sync feature is not available yet for non-iCloud users.
 
 Currently, it's still under heavy development.
 
