@@ -496,6 +496,15 @@ function setupTimedJob(bot: Telegraf<Context>) {
   }
 }
 
+function setupMarked(bot: Telegraf<Context>) {
+  const renderer = new marked.Renderer();
+  renderer.image = (href, title, text) => {
+    return `<a href="${href}">${title ? title : "&#8288;"}</a>`;
+  };
+
+  marked.use({ renderer });
+}
+
 // FIXME: start order should be refactored to remove global bot
 // global bot
 let bot: Telegraf<Context>;
@@ -519,6 +528,8 @@ async function start() {
 
     // job at certain time
     setupTimedJob(bot);
+
+    // setupMarked(bot);
 
     if (settings.isMainBot) {
       bot.launch();
