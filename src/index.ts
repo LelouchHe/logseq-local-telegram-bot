@@ -8,6 +8,10 @@ import { Message } from "typegram";
 
 import { marked } from "marked"
 
+// internal
+import { log, error, showMsg } from "./utils";
+import { runAtInterval, cancelJob } from "./timed_job";
+
 type InputHandler = (ctx: Context, message: Message.ServiceMessage) => Promise<void>;
 type OperationHandler = (bot: Telegraf<Context>, blockId: string) => Promise<void>;
 
@@ -86,7 +90,6 @@ let settings: Settings;
 const JOURNAL_PAGE_NAME = "Journal";
 const BOT_TOKEN_REGEX = /^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$/;
 const ONE_DAY_IN_SECOND = 24 * 60 * 60;
-const MINIMUM_GAP_IN_SECONDS = 60;
 const SCHEDULED_NOTIFICATION_JOB = "ScheduledTimedJob";
 const DEADLINE_NOTIFICATION_JOB = "DeadlineNotificationJob";
 const JOB_TYPES: { [ key: string ]: string } = {
@@ -161,18 +164,6 @@ const commandHandlers: { type: string, handler: InputHandler }[] = [
 const blockContextMenuHandlers: { [key: string]: OperationHandler } = {
   "Send": handleSendOperation as OperationHandler
 };
-
-function log(message: string) {
-  console.log("[Local Telegram Bot] " + message);
-}
-
-function error(message: string) {
-  console.error("[Local Telegram Bot] " + message);
-}
-
-function showMsg(message: string) {
-  logseq.UI.showMsg("[Local Telegram Bot] " + message);
-}
 
 function parseAuthorizedUsers(d: string): string[] {
   return d.split(",").map((rawUserName: string) => rawUserName.trim());
@@ -448,32 +439,6 @@ function setupMacro(bot: Telegraf<Context>) {
   });
 }
 
-function getDelayInMs(time: Date, seconds: number) {
-  let target = time.getTime();
-  const now = Date.now();
-  if (target < now) {
-    target += (1 + Math.floor((now - target) / seconds / 1000)) * seconds * 1000;
-  }
-
-  return target - now;
-}
-
-const jobIds: { [ key: string ]: number } = {};
-function runAtInterval(name: string, time: Date, seconds: number, cb: () => void) {
-  let delay = getDelayInMs(time, seconds);
-  if (delay < MINIMUM_GAP_IN_SECONDS * 1000) {
-    delay += seconds * 1000;
-  }
-
-  jobIds[name] = setTimeout(() => {
-    log(`job(${name}: ${jobIds[name]}) is running at ${new Date().toLocaleString()}`);
-    cb();
-    runAtInterval(name, time, seconds, cb);
-  }, delay);
-
-  log(`job(${name}: ${jobIds[name]}) will run in ${delay} ms`);
-}
-
 function startTimedJob(bot: Telegraf<Context>, name: string, time: Date) {
   runAtInterval(name, time, ONE_DAY_IN_SECOND, async () => {
     const tomorrow = new Date();
@@ -486,8 +451,7 @@ function startTimedJob(bot: Telegraf<Context>, name: string, time: Date) {
 }
 
 function updateTimedJob(bot: Telegraf<Context>, name: string, time: Date | null) {
-  log(`job(${name}: ${jobIds[name]}) is cancelled`);
-  clearTimeout(jobIds[name]);
+  cancelJob(name);
   if (time) {
     startTimedJob(bot, name, time);
   }
