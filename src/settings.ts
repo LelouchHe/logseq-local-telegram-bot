@@ -20,11 +20,11 @@ class Settings {
     return logseq.settings!.isMainBot;
   }
 
-  public get authorizedUsers() {
+  public get authorizedUsers(): string[] {
     return logseq.settings!.authorizedUsers.split(",").map((rawUserName: string) => rawUserName.trim());
   }
 
-  public get pageName() {
+  public get pageName(): string {
     if (!logseq.settings!.pageName) {
       logseq.settings!.pageName = JOURNAL_PAGE_NAME;
     }
@@ -32,7 +32,7 @@ class Settings {
     return logseq.settings!.pageName;
   }
 
-  public get inboxName() {
+  public get inboxName(): string {
     return logseq.settings!.inboxName;
   }
 
