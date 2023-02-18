@@ -6,16 +6,22 @@ import { settings } from "./settings";
 
 export { log, error, showMsg, getDateString, isMessageAuthorized };
 
+const PROJECT_NAME = "Local Telegram Bot";
+
+function format(message: string) {
+  return `[${PROJECT_NAME}] ` + message;
+}
+
 function log(message: string) {
-  console.log("[Local Telegram Bot] " + message);
+  console.log(format(message));
 }
 
 function error(message: string) {
-  console.error("[Local Telegram Bot] " + message);
+  console.error(format(message));
 }
 
 function showMsg(message: string) {
-  logseq.UI.showMsg("[Local Telegram Bot] " + message);
+  logseq.UI.showMsg(format(message));
 }
 
 function getDateString(date: Date) {
