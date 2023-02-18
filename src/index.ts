@@ -3,17 +3,16 @@ import { PageEntity, BlockEntity } from "@logseq/libs/dist/LSPlugin.user";
 
 // 4.* has URL is not constructor error, fallback to 3.*
 import { Telegraf, Context  } from "telegraf";
-import { Message } from "typegram";
 
 import { marked } from "marked"
 
 // internal
-import { log, error, showMsg, isMessageAuthorized, getDateString } from "./utils";
+import { log, error, showMsg, getDateString } from "./utils";
 import { runAtInterval, cancelJob } from "./timed_job";
-import { settings, initializeSettings, JOURNAL_PAGE_NAME } from "./settings";
-import { setupMessageTypes } from "./message_handler";
+import { settings, initializeSettings } from "./settings";
+import { setupMessageHandlers } from "./message_handlers";
+import { setupCommandHandlers } from "./command_handlers";
 
-type InputHandler = (ctx: Context, message: Message.ServiceMessage) => Promise<void>;
 type OperationHandler = (bot: Telegraf<Context>, blockId: string) => Promise<void>;
 
 const BOT_TOKEN_REGEX = /^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$/;
@@ -24,11 +23,6 @@ const JOB_TYPES: { [ key: string ]: string } = {
   [SCHEDULED_NOTIFICATION_JOB]: "scheduled",
   [DEADLINE_NOTIFICATION_JOB]: "deadline"
 };
-
-const commandHandlers: { type: string, handler: InputHandler }[] = [
-  registerCommandHandlerGenerator(),
-  helpCommandHandlerGenerator()
-];
 
 const blockContextMenuHandlers: { [key: string]: OperationHandler } = {
   "Send": handleSendOperation as OperationHandler
@@ -51,35 +45,6 @@ async function findTask(date: Date, type: string, status: string[]) {
   }
 
   return ret.flat();
-}
-
-function registerCommandHandlerGenerator() {
-  return {
-    type: "register",
-    handler: async (ctx: Context, message: Message.ServiceMessage) => {
-      ctx.reply(`${message.from!.username} has been successfully registered. You are eligible to receive messages from now`);
-    }
-  }
-}
-
-function helpCommandHandlerGenerator() {
-  return {
-    type: "help",
-    handler: async (ctx: Context, message: Message.ServiceMessage) => {
-      ctx.reply(`this is help: ${ctx.message?.text}`);
-    }
-  }
-}
-
-function setupCommands(bot: Telegraf<Context>) {
-  for (let handler of commandHandlers) {
-    bot.command(handler.type, (ctx) => {
-      if (ctx.message
-          && isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
-        handler.handler(ctx, ctx.message);
-      }
-    });
-  }
 }
 
 function convertBlocksToText(root: BlockEntity, tab: string, indent: string): string {
@@ -181,8 +146,9 @@ async function start() {
     bot = new Telegraf(settings.botToken);
 
     // inbound message
-    setupCommands(bot);
-    setupMessageTypes(bot);
+    // command should be before message
+    setupCommandHandlers(bot);
+    setupMessageHandlers(bot);
 
     // logseq operation
     setupBlockContextMenu(bot);

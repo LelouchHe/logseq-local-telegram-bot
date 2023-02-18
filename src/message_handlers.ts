@@ -7,12 +7,12 @@ import { Message } from "typegram";
 import { log, getDateString, isMessageAuthorized } from "./utils";
 import { settings, JOURNAL_PAGE_NAME } from "./settings";
 
-export { setupMessageTypes };
+export { setupMessageHandlers };
 
-type InputHandler = (ctx: Context, message: Message.ServiceMessage) => Promise<void>;
+type MessageHandler = (ctx: Context, message: Message.ServiceMessage) => Promise<void>;
 
 const DEFAULT_CAPTION = "no caption";
-const messageHandlers: { type: string, handler: InputHandler }[] = [];
+const messageHandlers: { type: string, handler: MessageHandler }[] = [];
 
 async function findPage(pageName: string): Promise<BlockEntity[]> {
   if (pageName != JOURNAL_PAGE_NAME) {
@@ -97,7 +97,7 @@ function textHandlerGenerator() {
 
   return {
     type: "text",
-    handler: handler as InputHandler
+    handler: handler as MessageHandler
   };
 }
 
@@ -141,11 +141,11 @@ function photoHandlerGenerator(bot: Telegraf<Context>) {
 
   return {
     type: "photo",
-    handler: handler as InputHandler
+    handler: handler as MessageHandler
   };
 }
 
-function setupMessageTypes(bot: Telegraf<Context>) {
+function setupMessageHandlers(bot: Telegraf<Context>) {
   messageHandlers.push(textHandlerGenerator());
   messageHandlers.push(photoHandlerGenerator(bot));
 
