@@ -1,6 +1,6 @@
 {
   "name": "logseq-local-telegram-bot",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "A local Telegram bot plugin that can handle messages from and share notes with eligible Telegram users",
   "author": "LelouchHe",
   "license": "MIT",
