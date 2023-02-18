@@ -86,6 +86,7 @@ let settings: Settings;
 const JOURNAL_PAGE_NAME = "Journal";
 const BOT_TOKEN_REGEX = /^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$/;
 const ONE_DAY_IN_SECOND = 24 * 60 * 60;
+const MINIMUM_GAP_IN_SECONDS = 60;
 const SCHEDULED_NOTIFICATION_JOB = "ScheduledTimedJob";
 const DEADLINE_NOTIFICATION_JOB = "DeadlineNotificationJob";
 const JOB_TYPES: { [ key: string ]: string } = {
@@ -459,7 +460,11 @@ function getDelayInMs(time: Date, seconds: number) {
 
 const jobIds: { [ key: string ]: number } = {};
 function runAtInterval(name: string, time: Date, seconds: number, cb: () => void) {
-  const delay = getDelayInMs(time, seconds);
+  let delay = getDelayInMs(time, seconds);
+  if (delay < MINIMUM_GAP_IN_SECONDS * 1000) {
+    delay += seconds * 1000;
+  }
+
   jobIds[name] = setTimeout(() => {
     log(`job(${name}: ${jobIds[name]}) is running at ${new Date().toLocaleString()}`);
     cb();
