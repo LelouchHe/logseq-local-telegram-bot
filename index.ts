@@ -320,10 +320,14 @@ function photoMessageHandlerGenerator() {
     }
 
     const lastPhoto = message.photo[message.photo.length - 1];
+    const photoUrl = await bot.telegram.getFileLink(lastPhoto.file_id);
+    const caption = message.caption ?? "no caption";
     await writeBlocks(
       settings.pageName,
       settings.inboxName,
-      [`{{renderer :local_telegram_bot,${message.caption ?? "no caption"},${lastPhoto.file_id}}}`]);
+      [
+        `{{renderer :local_telegram_bot,${caption},${lastPhoto.file_id}}}![${caption}](${photoUrl})`,
+      ]);
   }
 
   return {
@@ -433,15 +437,12 @@ function setupMacro(bot: Telegraf<Context>) {
     if (type !== ':local_telegram_bot') {
       return;
     }
-
-    // photo url from Telegram is not permanent, need to fetch everytime
-    // FIXME: use caption, instead of alt
     const photoUrl = await bot.telegram.getFileLink(photoId);
-    logseq.provideUI({
-      key: photoId,
-      slot,
-      template: `<img src="${photoUrl}" alt="${caption}" />`,
-    });
+
+    // replace the whole block with new renderer and img
+    // renderer runs once at one time, so no loop
+    // photo url from Telegram is not permanent, need to fetch everytime
+    logseq.Editor.updateBlock(payload.uuid, `{{renderer :local_telegram_bot,${caption},${photoId}}}![${caption}](${photoUrl})`);
   });
 }
 
