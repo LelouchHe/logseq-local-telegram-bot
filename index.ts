@@ -441,6 +441,7 @@ function setupMacro(bot: Telegraf<Context>) {
 
     // replace the whole block with new renderer and img
     // renderer runs once at one time, so no loop
+    // invalid renderer removes itself from rendering
     // photo url from Telegram is not permanent, need to fetch everytime
     logseq.Editor.updateBlock(payload.uuid, `{{renderer :local_telegram_bot,${caption},${photoId}}}![${caption}](${photoUrl})`);
   });
