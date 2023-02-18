@@ -12,7 +12,6 @@ export { setupMessageHandlers };
 type MessageHandler = (ctx: Context, message: Message.ServiceMessage) => Promise<void>;
 
 const DEFAULT_CAPTION = "no caption";
-const messageHandlers: { type: string, handler: MessageHandler }[] = [];
 
 async function findPage(pageName: string): Promise<BlockEntity[]> {
   if (pageName != JOURNAL_PAGE_NAME) {
@@ -146,8 +145,10 @@ function photoHandlerGenerator(bot: Telegraf<Context>) {
 }
 
 function setupMessageHandlers(bot: Telegraf<Context>) {
-  messageHandlers.push(textHandlerGenerator());
-  messageHandlers.push(photoHandlerGenerator(bot));
+  const messageHandlers: { type: string, handler: MessageHandler }[] = [
+    textHandlerGenerator(),
+    photoHandlerGenerator(bot)
+  ];
 
   for (let handler of messageHandlers) {
     // FIXME: no way to check union type?
