@@ -2,24 +2,26 @@ import { log } from "./utils";
 
 export { runAtInterval, runAt, cancelJob };
 
-const MINIMUM_GAP_IN_SECONDS = 60;
+const MINIMUM_GAP_IN_SECONDS = 10;
 const jobIds: { [key: string]: number } = {};
 
-function getDelayInMs(time: Date, seconds: number) {
+function getNextTargetTime(time: Date, seconds: number) {
   let target = time.getTime();
   const now = Date.now();
   if (target < now) {
     target += (1 + Math.floor((now - target) / seconds / 1000)) * seconds * 1000;
   }
 
-  return target - now;
+  return target;
 }
 
 function runAtInterval(name: string, time: Date, seconds: number, cb: () => void) {
-  let delay = getDelayInMs(time, seconds);
+  let target = getNextTargetTime(time, seconds);
+  let delay = target - Date.now();
   if (delay < MINIMUM_GAP_IN_SECONDS * 1000) {
     log(`delay gap is too small(${delay} ms), go to next interval`)
     delay += seconds * 1000;
+    target += seconds * 1000;
   }
 
   jobIds[name] = setTimeout(() => {
@@ -28,7 +30,9 @@ function runAtInterval(name: string, time: Date, seconds: number, cb: () => void
     runAtInterval(name, time, seconds, cb);
   }, delay);
 
-  log(`job(${name}: ${jobIds[name]}) will run in ${delay} ms`);
+  const next = new Date(target);
+
+  log(`job(${name}: ${jobIds[name]}) will run at ${next.toLocaleString()}`);
 }
 
 function runAt(name: string, time: Date, cb: () => void) {
@@ -43,7 +47,7 @@ function runAt(name: string, time: Date, cb: () => void) {
     cb();
   }, delay);
 
-  log(`job(${name}: ${jobIds[name]}) will run in ${delay} ms`);
+  log(`job(${name}: ${jobIds[name]}) will run at ${time.toLocaleString()}`);
 }
 
 function cancelJob(name: string) {

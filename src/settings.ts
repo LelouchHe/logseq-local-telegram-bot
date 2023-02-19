@@ -37,6 +37,9 @@ class Settings {
     });
   }
 
+  // it only has 2 value
+  // 1. valid token
+  // 2. ""
   public get botToken(): string {
     if (!logseq.settings!.botToken.match(BOT_TOKEN_REGEX)) {
       return "";
@@ -144,7 +147,7 @@ const settingsSchema: SettingSchemaDesc[] = [
   },
   {
     key: "scheduledNotificationTime",
-    description: "The local time of notificaiton for not-done task with scheduled date. The message should be sent one day before the scheduled at this specific time. Clearing it disable this feature",
+    description: "The local time of notificaiton for not-done task with scheduled date. The message should be sent one day before the scheduled at this specific time. Clearing it disable this feature. It's only enabled for main bot",
     type: "string",
     default: "",
     title: "Scheduled Notification Time",
@@ -152,7 +155,7 @@ const settingsSchema: SettingSchemaDesc[] = [
   },
   {
     key: "deadlineNotificationTime",
-    description: "The local time of notificaiton for not-done task with deadline date. The message should be sent one day before the deadline at this specific time. Clearing it disables this feature",
+    description: "The local time of notificaiton for not-done task with deadline date. The message should be sent one day before the deadline at this specific time. Clearing it disables this feature. It's only enabled for main bot",
     type: "string",
     default: "",
     title: "Deadline Notification Time",
