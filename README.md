@@ -24,6 +24,7 @@ Currently, it's still under heavy development.
     * This is to get its chat id without asking users to type in
     * Once someone is removed from authorized users, it won't get any message
 * Send not-done task notification at specific time **one day before its time**
+    * This is only enabled for **Main Bot**.
     * Task with scheduled time and deadline time are handled separately
     * Users can set the time to send each of the notifications in the settings, or disable this feature by clearing it.
     * If it's set to a future date, the notification will wait until that date comes, regardless of the time. 
