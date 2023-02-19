@@ -8,14 +8,13 @@ import { marked } from "marked"
 
 // internal
 import { log, error, showMsg, getDateString, nameof } from "./utils";
-import { runAtInterval, cancelJob } from "./timed_job";
+import { runAtInterval, cancelJob } from "./timed-job";
 import { settings, initializeSettings, Settings } from "./settings";
 import { setupMessageHandlers } from "./message_handlers";
 import { setupCommandHandlers } from "./command_handlers";
 
 type OperationHandler = (bot: Telegraf<Context>, blockId: string) => Promise<void>;
 
-const BOT_TOKEN_REGEX = /^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$/;
 const ONE_DAY_IN_SECOND = 24 * 60 * 60;
 const SCHEDULED_NOTIFICATION_JOB = "ScheduledTimedJob";
 const DEADLINE_NOTIFICATION_JOB = "DeadlineNotificationJob";
@@ -114,7 +113,7 @@ function updateTimedJob(bot: Telegraf<Context>, name: string, time: Date | null)
   }
 }
 
-function setupTimedJob(bot: Telegraf<Context>) {
+function startTimedJobs(bot: Telegraf<Context>) {
   if (settings.scheduledNotificationTime) {
     startTimedJob(bot, SCHEDULED_NOTIFICATION_JOB, settings.scheduledNotificationTime);
   }
@@ -122,6 +121,11 @@ function setupTimedJob(bot: Telegraf<Context>) {
   if (settings.deadlineNotificationTime) {
     startTimedJob(bot, DEADLINE_NOTIFICATION_JOB, settings.deadlineNotificationTime);
   }
+}
+
+function stopTimedJobs() {
+  cancelJob(SCHEDULED_NOTIFICATION_JOB);
+  cancelJob(DEADLINE_NOTIFICATION_JOB);
 }
 
 function setupMarked(bot: Telegraf<Context>) {
@@ -133,57 +137,79 @@ function setupMarked(bot: Telegraf<Context>) {
   marked.use({ renderer });
 }
 
-// FIXME: start order should be refactored to remove global bot
-// global bot
-let bot: Telegraf<Context>;
+async function startMainBot(bot: Telegraf<Context>) {
+  try {
+    // bot.launch can't catch all exception
+    // use getMe first
+    await bot.telegram.getMe();
+    await bot.launch();
+  } catch (e) {
+    error("bot failed to launch");
+    showMsg("Bot Token is not valid");
+    logseq.showSettingsUI();
 
-async function start() {
-  if (bot) {
-    // restart with new botToken
-    bot.token = settings.botToken;
-  } else {
-    // start first time
-    bot = new Telegraf(settings.botToken);
-
-    // inbound message
-    // command should be before message
-    setupCommandHandlers(bot);
-    setupMessageHandlers(bot);
-
-    // logseq operation
-    setupBlockContextMenu(bot);
-    setupSlashCommand(bot);
-
-    // job at certain time
-    setupTimedJob(bot);
-
-    // setupMarked(bot);
-
-    if (settings.isMainBot) {
-      bot.launch();
-      log("Bot is launched");
-    }
-
-    log("Bot is ready");
+    // rethrow to stop the process
+    throw e;
   }
+
+  startTimedJobs(bot);
+
+  log("bot has started as Main Bot");
+}
+
+async function stopMainBot(bot: Telegraf<Context>) {
+  stopTimedJobs();
+  await bot.stop();
+
+  log("bot has stopped as Main Bot");
+}
+
+function setupBot(bot: Telegraf<Context>) {
+  // command should be before message
+  setupCommandHandlers(bot);
+
+  // need this to handle photo renderer for non-Main bot
+  setupMessageHandlers(bot);
+
+  // logseq operation
+  setupBlockContextMenu(bot);
+  setupSlashCommand(bot);
+
+  // setupMarked(bot);
+}
+
+// this is called only when botToken is valid in format
+async function start(bot: Telegraf<Context>) {
+  if (bot.token) {
+    log("try to stop the old bot");
+    await stopMainBot(bot);
+  }
+
+  bot.token = settings.botToken;
+
+  if (settings.isMainBot) {
+    await startMainBot(bot);
+  }
+
+  log("bot is ready");
 }
 
 async function main() {
+  const bot = new Telegraf<Context>("");
+
   // logseq.settings is NOT available until now
   initializeSettings((name) => {
     switch (name) {
       case nameof<Settings>("botToken"):
-        start();
+        start(bot);
         break;
 
       case nameof<Settings>("isMainBot"):
-        if (bot) {
+        if (bot.token) {
           if (settings.isMainBot) {
-            bot.launch();
-            log("Bot is launched");
+            startMainBot(bot);
           } else {
-            bot.stop();
-            log("Bot is stopped");
+            stopMainBot(bot);
           }
         }
         break;
@@ -198,13 +224,15 @@ async function main() {
     }
   });
 
+  setupBot(bot);
+
   if (!settings.botToken) {
     showMsg("Bot Token is not valid");
     logseq.showSettingsUI();
     return;
   }
 
-  start();
+  start(bot);
 }
 
 // bootstrap
