@@ -3,36 +3,33 @@ import { log } from "./utils";
 export { runAtInterval, runAt, cancelJob };
 
 const MINIMUM_GAP_IN_SECONDS = 10;
+const MS_PER_SECOND = 1000;
 const jobIds: { [key: string]: number } = {};
 
 function getNextTargetTime(time: Date, seconds: number) {
   let target = time.getTime();
   const now = Date.now();
   if (target < now) {
-    target += (1 + Math.floor((now - target) / seconds / 1000)) * seconds * 1000;
+    target += (1 + Math.floor((now - target) / seconds / MS_PER_SECOND)) * seconds * MS_PER_SECOND;
   }
 
-  return target;
+  return new Date(target);
 }
 
 function runAtInterval(name: string, time: Date, seconds: number, cb: () => void) {
   let target = getNextTargetTime(time, seconds);
-  let delay = target - Date.now();
-  if (delay < MINIMUM_GAP_IN_SECONDS * 1000) {
-    log(`delay gap is too small(${delay} ms), go to next interval`)
-    delay += seconds * 1000;
-    target += seconds * 1000;
+  if (target.getTime() - Date.now() < MINIMUM_GAP_IN_SECONDS * MS_PER_SECOND) {
+    log(`next running time(${target.toLocaleString()}) is too close, go to next interval`);
+    target.setTime(target.getTime() + seconds * MS_PER_SECOND);
   }
 
   jobIds[name] = setTimeout(() => {
     log(`job(${name}: ${jobIds[name]}) is running at ${new Date().toLocaleString()}`);
     cb();
     runAtInterval(name, time, seconds, cb);
-  }, delay);
+  }, target.getTime() - Date.now());
 
-  const next = new Date(target);
-
-  log(`job(${name}: ${jobIds[name]}) will run at ${next.toLocaleString()}`);
+  log(`job(${name}: ${jobIds[name]}) will run at ${target.toLocaleString()}`);
 }
 
 function runAt(name: string, time: Date, cb: () => void) {
