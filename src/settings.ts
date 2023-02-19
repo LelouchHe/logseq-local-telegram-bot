@@ -1,18 +1,47 @@
 import "@logseq/libs";
 import { SettingSchemaDesc } from "@logseq/libs/dist/LSPlugin.user";
 
-export { settings, initializeSettings, JOURNAL_PAGE_NAME };
+import { showMsg, nameof } from "./utils";
+
+export { Settings, settings, initializeSettings, JOURNAL_PAGE_NAME };
 
 const JOURNAL_PAGE_NAME = "Journal";
+const BOT_TOKEN_REGEX = /^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$/;
 
 class Settings {
-  constructor() {
+  constructor(onUpdate: (key: string) => void) {
     if (!logseq.settings!.chatIds) {
       logseq.updateSettings({ "chatIds": {} });
     }
+
+    logseq.onSettingsChanged((new_settings, old_settings) => {
+      if (new_settings.botToken != old_settings.botToken) {
+        if (settings.botToken) {
+          onUpdate(nameof<Settings>("botToken"));
+        } else {
+          showMsg("Bot Token is not valid");
+        }
+      }
+
+      if (new_settings.isMainBot != old_settings.isMainBot) {
+        onUpdate(nameof<Settings>("isMainBot"));
+      }
+
+      if (new_settings.scheduledNotificationTime != old_settings.scheduledNotificationTime) {
+        onUpdate(nameof<Settings>("scheduledNotificationTime"));
+      }
+
+      if (new_settings.deadlineNotificationTime != old_settings.deadlineNotificationTime) {
+        onUpdate(nameof<Settings>("deadlineNotificationTime"));  
+      }
+    });
   }
 
   public get botToken(): string {
+    if (!logseq.settings!.botToken.match(BOT_TOKEN_REGEX)) {
+      return "";
+    }
+
     return logseq.settings!.botToken;
   }
 
@@ -37,7 +66,7 @@ class Settings {
   }
 
   public get scheduledNotificationTime() {
-    if (logseq.settings!.scheduledNotificationTime) {
+    if (this.isMainBot && logseq.settings!.scheduledNotificationTime) {
       return new Date(logseq.settings!.scheduledNotificationTime);
     } else {
       return null;
@@ -45,7 +74,7 @@ class Settings {
   }
 
   public get deadlineNotificationTime() {
-    if (logseq.settings!.deadlineNotificationTime) {
+    if (this.isMainBot && logseq.settings!.deadlineNotificationTime) {
       return new Date(logseq.settings!.deadlineNotificationTime);
     } else {
       return null;
@@ -131,7 +160,7 @@ const settingsSchema: SettingSchemaDesc[] = [
   }
 ];
 
-function initializeSettings() {
+function initializeSettings(onUpdate: (key: string) => void) {
   logseq.useSettingsSchema(settingsSchema);
-  settings = new Settings();
+  settings = new Settings(onUpdate);
 }

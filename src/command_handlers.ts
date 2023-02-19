@@ -31,9 +31,7 @@ function helpHandlerGenerator() {
 }
 
 function setupCommandHandlers(bot: Telegraf<Context>) {
-  console.log(bot);
   for (let handler of commandHandlers) {
-    console.log(handler);
     bot.command(handler.type, (ctx) => {
       if (ctx.message
         && isMessageAuthorized(ctx.message as Message.ServiceMessage)) {

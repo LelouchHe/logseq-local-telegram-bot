@@ -4,12 +4,18 @@ import { Message } from "typegram";
 
 import { settings } from "./settings";
 
-export { log, error, showMsg, getDateString, isMessageAuthorized };
+export { log, error, showMsg, getDateString, isMessageAuthorized, nameof };
 
 const PROJECT_NAME = "Local Telegram Bot";
 
 function format(message: string) {
   return `[${PROJECT_NAME}] ` + message;
+}
+
+// Though it doesn't provide the name, at least it does compile check
+// https://stackoverflow.com/a/50470026
+function nameof<T>(name: Extract<keyof T, string>): string {
+  return name;
 }
 
 function log(message: string) {

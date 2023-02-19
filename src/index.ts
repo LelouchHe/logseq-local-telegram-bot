@@ -1,5 +1,5 @@
 import "@logseq/libs";
-import { PageEntity, BlockEntity } from "@logseq/libs/dist/LSPlugin.user";
+import { PageEntity, BlockEntity, SettingSchemaDesc } from "@logseq/libs/dist/LSPlugin.user";
 
 // 4.* has URL is not constructor error, fallback to 3.*
 import { Telegraf, Context  } from "telegraf";
@@ -7,9 +7,9 @@ import { Telegraf, Context  } from "telegraf";
 import { marked } from "marked"
 
 // internal
-import { log, error, showMsg, getDateString } from "./utils";
+import { log, error, showMsg, getDateString, nameof } from "./utils";
 import { runAtInterval, cancelJob } from "./timed_job";
-import { settings, initializeSettings } from "./settings";
+import { settings, initializeSettings, Settings } from "./settings";
 import { setupMessageHandlers } from "./message_handlers";
 import { setupCommandHandlers } from "./command_handlers";
 
@@ -170,40 +170,35 @@ async function start() {
 
 async function main() {
   // logseq.settings is NOT available until now
-  initializeSettings();
-
-  // FIXME: refactor settings change
-  logseq.onSettingsChanged((new_settings, old_settings) => {
-    if (new_settings.botToken != old_settings.botToken) {
-      if (settings.botToken.match(BOT_TOKEN_REGEX)) {
+  initializeSettings((name) => {
+    switch (name) {
+      case nameof<Settings>("botToken"):
         start();
-      } else {
-        showMsg("Bot Token is not valid");
-      }
-    }
+        break;
 
-    if (new_settings.isMainBot != old_settings.isMainBot) {
-      if (bot) {
-        if (settings.isMainBot) {
-          bot.launch();
-          log("Bot is launched");
-        } else {
-          bot.stop();
-          log("Bot is stopped");
+      case nameof<Settings>("isMainBot"):
+        if (bot) {
+          if (settings.isMainBot) {
+            bot.launch();
+            log("Bot is launched");
+          } else {
+            bot.stop();
+            log("Bot is stopped");
+          }
         }
-      }
-    }
+        break;
 
-    if (new_settings.scheduledNotificationTime != old_settings.scheduledNotificationTime) {
-      updateTimedJob(bot, SCHEDULED_NOTIFICATION_JOB, settings.scheduledNotificationTime);
-    }
+      case nameof<Settings>("scheduledNotificationTime"):
+        updateTimedJob(bot, SCHEDULED_NOTIFICATION_JOB, settings.scheduledNotificationTime);
+        break;
 
-    if (new_settings.deadlineNotificationTime != old_settings.deadlineNotificationTime) {
-      updateTimedJob(bot, DEADLINE_NOTIFICATION_JOB, settings.deadlineNotificationTime);
+      case nameof<Settings>("deadlineNotificationTime"):
+        updateTimedJob(bot, DEADLINE_NOTIFICATION_JOB, settings.deadlineNotificationTime);
+        break;
     }
   });
 
-  if (!settings.botToken.match(BOT_TOKEN_REGEX)) {
+  if (!settings.botToken) {
     showMsg("Bot Token is not valid");
     logseq.showSettingsUI();
     return;
