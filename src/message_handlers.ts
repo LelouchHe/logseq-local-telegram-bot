@@ -2,7 +2,7 @@ import { PageEntity, BlockEntity } from "@logseq/libs/dist/LSPlugin.user";
 
 import { Telegraf, Context } from "telegraf";
 import { MessageSubTypes } from "telegraf/typings/telegram-types";
-import { Message } from "typegram";
+import { Message, MessageEntity } from "typegram";
 
 import { log, getDateString, isMessageAuthorized } from "./utils";
 import { settings, JOURNAL_PAGE_NAME } from "./settings";
@@ -10,8 +10,14 @@ import { settings, JOURNAL_PAGE_NAME } from "./settings";
 export { setupMessageHandlers };
 
 type MessageHandler = (ctx: Context, message: Message.ServiceMessage) => Promise<void>;
+type EntityHandler = (text: string, entity: MessageEntity) => string;
 
 const DEFAULT_CAPTION = "no caption";
+
+const entityHandlers: { [ type: string ]: EntityHandler } = {
+  "pre": handleCodeEntity,
+  "code": handleCodeEntity
+};
 
 async function findPage(pageName: string): Promise<BlockEntity[]> {
   if (pageName != JOURNAL_PAGE_NAME) {
@@ -78,6 +84,23 @@ async function writeBlocks(pageName: string, inboxName: string, texts: string[])
   return true;
 }
 
+function handleCodeEntity(text: string, entity: MessageEntity): string {
+  let code = "`";
+  if (text.indexOf("\n") > 0) {
+    code = "```";
+  }
+  
+  return code + text + code;
+}
+
+function handleEntity(text: string, entity: MessageEntity): string {
+  if (entityHandlers[entity.type]) {
+    text = entityHandlers[entity.type](text, entity);
+  }
+
+  return text;
+}
+
 function textHandlerGenerator() {
   async function handler(ctx: Context, message: Message.TextMessage) {
     if (!message?.text) {
@@ -85,10 +108,27 @@ function textHandlerGenerator() {
       return;
     }
 
+    let text = message.text;
+    if (message.entities) {
+      message.entities.sort((a, b) => a.offset - b.offset);
+      let subs: string[] = [];
+      let offset = 0;
+      for (let entity of message.entities) {
+        subs.push(text.substring(offset, entity.offset));
+        let sub = text.substring(entity.offset, entity.offset + entity.length);
+        subs.push(handleEntity(sub, entity));
+        offset = entity.offset + entity.length;
+      }
+
+      text = subs.join("");
+    }
+
+    console.log(text);
+
     if (!await writeBlocks(
       settings.pageName,
       settings.inboxName,
-      [message.text])) {
+      [text])) {
       ctx.reply("Failed to write this to Logseq");
       return;
     }
