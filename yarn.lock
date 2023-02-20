@@ -947,10 +947,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/minimist@npm:^1.2.2":
+  version: 1.2.2
+  resolution: "@types/minimist@npm:1.2.2"
+  checksum: b8da83c66eb4aac0440e64674b19564d9d86c80ae273144db9681e5eeff66f238ade9515f5006ffbfa955ceff8b89ad2bd8ec577d7caee74ba101431fb07045d
+  languageName: node
+  linkType: hard
+
 "@types/parse-json@npm:^4.0.0":
   version: 4.0.0
   resolution: "@types/parse-json@npm:4.0.0"
   checksum: fd6bce2b674b6efc3db4c7c3d336bd70c90838e8439de639b909ce22f3720d21344f52427f1d9e57b265fcb7f6c018699b99e5e0c208a1a4823014269a6bf35b
+  languageName: node
+  linkType: hard
+
+"@types/string-argv@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@types/string-argv@npm:0.3.0"
+  dependencies:
+    string-argv: "*"
+  checksum: 827e51283f1afeb301f07a78e7fc71f01cd19bd5c8e191bcf0d6cb0e56ed397802debe9cccc80970d754a2db21a46bac06f1bd5cd5e2c69f615da8ef418340ce
   languageName: node
   linkType: hard
 
@@ -2434,17 +2450,21 @@ __metadata:
   dependencies:
     "@logseq/libs": ^0.0.14
     "@types/marked": ^4.0.8
+    "@types/minimist": ^1.2.2
+    "@types/string-argv": ^0.3.0
     buffer: ^5.5.0
     crypto-browserify: ^3.12.0
     events: ^3.3.0
     https-browserify: ^1.0.0
     marked: ^4.2.12
+    minimist: ^1.2.8
     parcel: ^2.8.3
     path-browserify: ^1.0.1
     punycode: ^1.4.1
     querystring-es3: ^0.2.1
     stream-browserify: ^3.0.0
     stream-http: ^3.2.0
+    string-argv: ^0.3.1
     telegraf: 3.40.0
     url: ^0.11.0
     util: ^0.12.5
@@ -2581,7 +2601,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"minimist@npm:^1.2.0":
+"minimist@npm:^1.2.0, minimist@npm:^1.2.8":
   version: 1.2.8
   resolution: "minimist@npm:1.2.8"
   checksum: 75a6d645fb122dad29c06a7597bddea977258957ed88d7a6df59b5cd3fe4a527e253e9bbf2e783e4b73657f9098b96a5fe96ab8a113655d4109108577ecf85b0
@@ -3387,6 +3407,13 @@ __metadata:
     readable-stream: ^3.6.0
     xtend: ^4.0.2
   checksum: c9b78453aeb0c84fcc59555518ac62bacab9fa98e323e7b7666e5f9f58af8f3155e34481078509b02929bd1268427f664d186604cdccee95abc446099b339f83
+  languageName: node
+  linkType: hard
+
+"string-argv@npm:*, string-argv@npm:^0.3.1":
+  version: 0.3.1
+  resolution: "string-argv@npm:0.3.1"
+  checksum: efbd0289b599bee808ce80820dfe49c9635610715429c6b7cc50750f0437e3c2f697c81e5c390208c13b5d5d12d904a1546172a88579f6ee5cbaaaa4dc9ec5cf
   languageName: node
   linkType: hard
 

@@ -4,12 +4,18 @@ import { Message } from "typegram";
 
 import { settings } from "./settings";
 
-export { log, error, showMsg, getDateString, isMessageAuthorized, nameof };
+export { log, error, showMsg, getDateString, isMessageAuthorized, nameof, createFunction };
 
 const PROJECT_NAME = "Local Telegram Bot";
 
 function format(message: string) {
   return `[${PROJECT_NAME}] ` + message;
+}
+
+function createFunction(body: string, params: string[] = []) {
+  const func = `function(${params.join(", ")}) { ${body} }`;
+  const wrap = () => `{ return ${func}; };`;
+  return new Function(wrap()).call(null);
 }
 
 // Though it doesn't provide the name, at least it does compile check

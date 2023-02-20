@@ -3,7 +3,6 @@ import { PageEntity, BlockEntity, SettingSchemaDesc } from "@logseq/libs/dist/LS
 
 // 4.* has URL is not constructor error, fallback to 3.*
 import { Telegraf, Context  } from "telegraf";
-
 import { marked } from "marked"
 
 // internal

@@ -1,5 +1,7 @@
 import { Telegraf, Context } from "telegraf";
 import { Message } from "typegram";
+import stringArgv from "string-argv";
+import minimist from "minimist";
 
 import { isMessageAuthorized } from "./utils";
 
@@ -8,15 +10,16 @@ export { setupCommandHandlers };
 type CommandHandler = (ctx: Context) => Promise<void>;
 
 const commandHandlers: { type: string, handler: CommandHandler }[] = [
-  registerHandlerGenerator(),
+  runHandlerGenerator(),
   helpHandlerGenerator()
 ];
 
-function registerHandlerGenerator() {
+function runHandlerGenerator() {
   return {
-    type: "register",
+    type: "run",
     handler: async (ctx: Context) => {
-      ctx.reply(`${ctx.message?.from!.username} has been successfully registered. You are eligible to receive messages from now`);
+      console.log(minimist(stringArgv(ctx.message!.text)));
+      eval(`logseq.UI.showMsg("test");`);
     }
   }
 }
