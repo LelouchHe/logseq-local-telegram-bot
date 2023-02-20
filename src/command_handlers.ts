@@ -6,7 +6,7 @@ import stringArgv from "string-argv";
 import minimist from "minimist";
 import { marked } from "marked";
 
-import { createFunction, isMessageAuthorized, log } from "./utils";
+import { runFunction, isMessageAuthorized, log } from "./utils";
 
 export { setupCommandHandlers };
 
@@ -18,7 +18,6 @@ class Command {
   public params: string[] = [];
   public script: string = "";
   public description: string = "";
-  public func: Function | null = null;
 }
 
 const COMMAND_PAGE_NAME = "local-telegram-bot";
@@ -65,9 +64,6 @@ function parseCommand(content: string): Command | null {
 
   command.script = parts[1].substring(parts[1].indexOf("\n"));
   command.description = parts.length == 3 ? parts[2].trim() : "";
-  if (command.type == "run") {
-    command.func = createFunction(command.script, command.params);
-  }
 
   return command;
 }
@@ -126,12 +122,13 @@ function runHandlerGenerator() {
       }
 
       const { command, argv } = h;
-      if (!command.func) {
+      if (!command.script) {
         ctx.reply("not a valid command");
         return;
       }
 
-      const result = await command.func.apply(null, argv.slice(1));
+      const result = await runFunction(command.script, argv.slice(1), command.params);
+
       if (result === undefined) {
         ctx.reply("command has finished");
       } else {
