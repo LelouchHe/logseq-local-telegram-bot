@@ -162,6 +162,7 @@ function queryHandlerGenerator() {
       }
 
       // FIXME: how about other results?
+      // better to return json? with uuid in code?
       const rs: BlockEntity[] = result.flat();
       const msg = rs.map(r => `(\`${r.uuid}\`): ${r.content}`).join("\n\n");
       const html = marked.parseInline(msg);
