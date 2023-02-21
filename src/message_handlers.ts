@@ -152,7 +152,7 @@ function textHandlerGenerator() {
 }
 
 function photoTemplate(caption: string, id: string, url: string) {
-  return `{{renderer :local_telegram_bot,${caption},${id}}}![${caption}](${url})`;
+  return `{{renderer :local_telegram_bot-renderPhoto,${caption},${id}}}![${caption}](${url})`;
 }
 
 function photoHandlerGenerator(bot: Telegraf<Context>) {
@@ -175,9 +175,11 @@ function photoHandlerGenerator(bot: Telegraf<Context>) {
 
   logseq.App.onMacroRendererSlotted(async ({ slot, payload }) => {
     let [type, caption, photoId] = payload.arguments;
-    if (type !== ':local_telegram_bot') {
+    // backward compatibility
+    if (type !== ':local_telegram_bot' && type !== ":local_telegram_bot-renderPhoto") {
       return;
     }
+
     const photoUrl = await bot.telegram.getFileLink(photoId);
 
     // replace the whole block with new renderer and img
