@@ -112,6 +112,23 @@ function handleArgs(key: string, text: string): { command: Command, argv: string
   }
 }
 
+async function handleResult(ctx: Context, result: any) {
+  if (result === undefined || result === null) {
+    ctx.reply("no results");
+  } else {
+    // maximum size of message is 4k
+    // how to enable users to copy uuid?
+    const msg = JSON.stringify(result);
+    const html = marked.parseInline(msg);
+
+    try {
+      await ctx.reply(html, { parse_mode: "HTML" });
+    } catch (e) {
+      ctx.reply((<Error>e).message);
+    }
+  }
+}
+
 function runHandlerGenerator() {
   return {
     type: RUN_COMMAND,
@@ -131,13 +148,7 @@ function runHandlerGenerator() {
 
       const result = await runFunction(command.script, argv.slice(1), command.params);
 
-      if (result === undefined) {
-        ctx.reply("command has finished");
-      } else {
-        const msg = JSON.stringify(result);
-        const html = marked.parseInline(msg);
-        ctx.reply(html, { parse_mode: "HTML" });
-      }
+      handleResult(ctx, result);
     }
   }
 }
@@ -155,17 +166,7 @@ function queryHandlerGenerator() {
 
       const { command, argv } = h;
       const result = await logseq.DB.datascriptQuery(command.script, ...argv.slice(1));
-      if (!result) {
-        ctx.reply("no results");
-        return;
-      }
-
-      // FIXME: how about other results?
-      // better to return json? with uuid in code?
-      const rs: BlockEntity[] = result.flat();
-      const msg = rs.map(r => `(\`${r.uuid}\`): ${r.content}`).join("\n\n");
-      const html = marked.parseInline(msg);
-      ctx.reply(html, { parse_mode: "HTML" });
+      handleResult(ctx, result);
     }
   }
 }
