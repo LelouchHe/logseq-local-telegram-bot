@@ -21,10 +21,12 @@ class Command {
 }
 
 const COMMAND_PAGE_NAME = "local-telegram-bot";
+const QUERY_COMMAND = "query";
+const RUN_COMMAND = "run";
 
 const commandTypes: { [ key: string ]: string } = {
-  [`[[${COMMAND_PAGE_NAME}/query]]`] : "query",
-  [`[[${COMMAND_PAGE_NAME}/run]]`]: "run",
+  [`[[${COMMAND_PAGE_NAME}/${QUERY_COMMAND}]]`]: `${QUERY_COMMAND}`,
+  [`[[${COMMAND_PAGE_NAME}/${RUN_COMMAND}]]`]: `${RUN_COMMAND}`,
 };
 
 const commandHandlers: { type: string, description: string, handler: CommandHandler }[] = [
@@ -111,12 +113,11 @@ function handleArgs(key: string, text: string): { command: Command, argv: string
 }
 
 function runHandlerGenerator() {
-  const key = "run";
   return {
-    type: key,
+    type: RUN_COMMAND,
     description: "Customized js/ts script",
     handler: async (ctx: Context) => {
-      const h = handleArgs(key, ctx.message!.text);
+      const h = handleArgs(RUN_COMMAND, ctx.message!.text);
       if (!h) {
         ctx.reply("not a valid command");
         return;
@@ -142,12 +143,11 @@ function runHandlerGenerator() {
 }
 
 function queryHandlerGenerator() {
-  const key = "query";
   return {
-    type: key,
+    type: QUERY_COMMAND,
     description: "Customized datascript query",
     handler: async (ctx: Context) => {
-      const h = handleArgs(key, ctx.message!.text);
+      const h = handleArgs(QUERY_COMMAND, ctx.message!.text);
       if (!h) {
         ctx.reply("not a valid command");
         return;
@@ -195,6 +195,13 @@ function helpHandlerGenerator() {
   }
 }
 
+function slashTemplate(name: string, language: string) {
+  let template = `[[${COMMAND_PAGE_NAME}/${name}]] name param0 param1\n`;
+  template += `\`\`\`${language}\n\`\`\`\n`;
+  template += "description";
+  return template;
+}
+
 let unsubscribe: IUserOffHook = () => { };
 
 function setupCommandHandlers(bot: Telegraf<Context>) {
@@ -209,17 +216,11 @@ function setupCommandHandlers(bot: Telegraf<Context>) {
 
   // FIXME: unable to un-register?
   logseq.Editor.registerSlashCommand("Local Telegram Bot: Define Customized Query", async (e) => {
-    let template = "[[local-telegram-bot/query]] name param0 param1\n";
-    template += "```clojure\n```\n";
-    template += "description";
-    logseq.Editor.updateBlock(e.uuid, template);
+    logseq.Editor.updateBlock(e.uuid, slashTemplate(QUERY_COMMAND, "clojure"));
   });
 
   logseq.Editor.registerSlashCommand("Local Telegram Bot: Define Customized Run", async (e) => {
-    let template = "[[local-telegram-bot/run]] name param0 param1\n";
-    template += "```ts\n```\n";
-    template += "description";
-    logseq.Editor.updateBlock(e.uuid, template);
+    logseq.Editor.updateBlock(e.uuid, slashTemplate(RUN_COMMAND, "ts"));
   });
 }
 
