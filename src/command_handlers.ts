@@ -206,6 +206,21 @@ function setupCommandHandlers(bot: Telegraf<Context>) {
       }
     });
   }
+
+  // FIXME: unable to un-register?
+  logseq.Editor.registerSlashCommand("Local Telegram Bot: Define Customized Query", async (e) => {
+    let template = "[[local-telegram-bot/query]] name param0 param1\n";
+    template += "```clojure\n```\n";
+    template += "description";
+    logseq.Editor.updateBlock(e.uuid, template);
+  });
+
+  logseq.Editor.registerSlashCommand("Local Telegram Bot: Define Customized Run", async (e) => {
+    let template = "[[local-telegram-bot/run]] name param0 param1\n";
+    template += "```ts\n```\n";
+    template += "description";
+    logseq.Editor.updateBlock(e.uuid, template);
+  });
 }
 
 function enableCustomizedCommands() {
