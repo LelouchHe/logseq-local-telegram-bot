@@ -6,7 +6,7 @@ import stringArgv from "string-argv";
 import minimist from "minimist";
 import { marked } from "marked";
 
-import { runFunction, isMessageAuthorized, log } from "./utils";
+import { runFunction, isMessageAuthorized, log, error } from "./utils";
 
 export { setupCommandHandlers, commandTypes, enableCustomizedCommands, disableCustomizedCommands };
 
@@ -23,6 +23,7 @@ class Command {
 const COMMAND_PAGE_NAME = "local-telegram-bot";
 const QUERY_COMMAND = "query";
 const RUN_COMMAND = "run";
+const DEBUG_CMD_RENDERER = "{{renderer :local_telegram_bot-debugCmd}}";
 
 const commandTypes: { [ key: string ]: string } = {
   [`[[${COMMAND_PAGE_NAME}/${QUERY_COMMAND}]]`]: `${QUERY_COMMAND}`,
@@ -60,7 +61,12 @@ function parseCommand(content: string): Command | null {
   const command = new Command();
   command.type = commandTypes[prefix];
 
-  const names = parts[0].trim().split(" ");
+  let signature = parts[0].trim();
+  if (signature.endsWith(DEBUG_CMD_RENDERER)) {
+    signature = signature.substring(0, signature.length - DEBUG_CMD_RENDERER.length).trim();
+  }
+
+  const names = signature.split(" ");
   command.name = names[0];
   command.params = names.slice(1);
 
@@ -68,6 +74,20 @@ function parseCommand(content: string): Command | null {
   command.description = parts.length == 3 ? parts[2].trim() : "";
 
   return command;
+}
+
+async function runCommand(command: Command, argv: string[]) {
+  switch (command.type) {
+    case "query":
+      return await logseq.DB.datascriptQuery(command.script, ...argv);
+
+    case "run":
+      return await runFunction(command.script, argv, command.params);
+
+    default:
+      error(`invalid command type: ${command.type}`);
+      return null;
+  }
 }
 
 async function updateCommands() {
@@ -129,26 +149,29 @@ async function handleResult(ctx: Context, result: any) {
   }
 }
 
+async function handleCommand(type: string, ctx: Context) {
+  const h = handleArgs(type, ctx.message!.text);
+  if (!h) {
+    ctx.reply("not a valid command");
+    return;
+  }
+
+  const { command, argv } = h;
+  if (!command.script) {
+    ctx.reply("not a valid command");
+    return;
+  }
+
+  const result = await runCommand(command, argv.slice(1));
+  handleResult(ctx, result);
+}
+
 function runHandlerGenerator() {
   return {
     type: RUN_COMMAND,
     description: "Customized js/ts script",
     handler: async (ctx: Context) => {
-      const h = handleArgs(RUN_COMMAND, ctx.message!.text);
-      if (!h) {
-        ctx.reply("not a valid command");
-        return;
-      }
-
-      const { command, argv } = h;
-      if (!command.script) {
-        ctx.reply("not a valid command");
-        return;
-      }
-
-      const result = await runFunction(command.script, argv.slice(1), command.params);
-
-      handleResult(ctx, result);
+      handleCommand(RUN_COMMAND, ctx);
     }
   }
 }
@@ -158,15 +181,7 @@ function queryHandlerGenerator() {
     type: QUERY_COMMAND,
     description: "Customized datascript query",
     handler: async (ctx: Context) => {
-      const h = handleArgs(QUERY_COMMAND, ctx.message!.text);
-      if (!h) {
-        ctx.reply("not a valid command");
-        return;
-      }
-
-      const { command, argv } = h;
-      const result = await logseq.DB.datascriptQuery(command.script, ...argv.slice(1));
-      handleResult(ctx, result);
+      handleCommand(QUERY_COMMAND, ctx);
     }
   }
 }
@@ -203,6 +218,13 @@ function slashTemplate(name: string, language: string) {
   return template;
 }
 
+function inputTemplate(index: number, blockId: string, placeholder: string) {
+  return `<input id="param${index}-${blockId}"
+               class="debugCmd-param"
+               placeholder="${placeholder}"
+               data-on-click="debugCmd_click_input" />`;
+}
+
 let unsubscribe: IUserOffHook = () => { };
 
 function setupCommandHandlers(bot: Telegraf<Context>) {
@@ -222,6 +244,104 @@ function setupCommandHandlers(bot: Telegraf<Context>) {
 
   logseq.Editor.registerSlashCommand("Local Telegram Bot: Define Customized Run", async (e) => {
     logseq.Editor.updateBlock(e.uuid, slashTemplate(RUN_COMMAND, "ts"));
+  });
+
+  logseq.provideStyle(`
+    .debugCmd {
+      background-color: red;
+    }
+    .debugCmd-try {
+      background-color: green;
+    }
+    .debugCmd-param {
+      background-color: yellow;
+      margin: 5px 5px 0 0;
+      width: 100px;
+    }
+    .debugCmd-result {
+      position: absolute;
+      top:  50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      height: 60%;
+      background-color: white;
+      overflow-y: scroll;
+    }
+    `);
+
+  logseq.provideModel({
+    async debugCmd_try(e: any) {
+      const { blockid } = e.dataset;
+      const block = await logseq.Editor.getBlock(blockid);
+      if (!block) {
+        return;
+      }
+
+      const cmd = parseCommand(block.content);
+      if (!cmd) {
+        log(`invalid command content: ${block.content}`);
+        return;
+      }
+
+      const argv: string[] = [];
+      for (let i = 0; i < cmd.params.length; i++) {
+        const input = top!.document.querySelector(`#param${i}-${blockid}`) as HTMLInputElement;
+        argv.push(input.value);
+      }
+
+      const result = await runCommand(cmd, argv);
+
+      const textArea = top!.document.createElement("textarea") as HTMLTextAreaElement;
+      textArea.className = "debugCmd-result";
+      textArea.value = JSON.stringify(result, null, 2);
+      textArea.readOnly = true;
+      textArea.addEventListener("focusout", (e) => {
+        top!.document.body.removeChild(textArea);
+      });
+      top!.document.body.appendChild(textArea);
+      textArea.focus();
+    },
+    debugCmd_click_input(e: any) {
+      const input = top!.document.querySelector(`#${e.id}`) as HTMLInputElement;
+      input!.focus();
+    }
+  });
+
+  logseq.App.onMacroRendererSlotted(async ({ slot, payload }) => {
+    let [type] = payload.arguments;
+    if (type !== ':local_telegram_bot-debugCmd') {
+      return;
+    }
+
+    const block = await logseq.Editor.getBlock(payload.uuid);
+    if (!block) {
+      log(`invalid command block: ${slot}: ${payload.uuid}`);
+      return;
+    }
+
+    const cmd = parseCommand(block.content);
+    if (!cmd) {
+      log(`invalid command content: ${block.content}`);
+      return;
+    }
+
+    const inputs: string[] = [];
+    for (let i = 0; i < cmd.params.length; i++) {
+      inputs.push(inputTemplate(i, payload.uuid, cmd.params[i]));
+    }
+
+    logseq.provideUI({
+      key: payload.uuid,
+      slot,
+      template: `
+      <div class="debugCmd">
+        <span class="debugCmd-try"
+              data-blockid="${payload.uuid}"
+              data-on-click="debugCmd_try">Try</span>
+        ${inputs.join("")}
+      </div>
+     `,
+    })
   });
 }
 

@@ -134,8 +134,6 @@ function textHandlerGenerator() {
       text = subs.join("");
     }
 
-    console.log(text);
-
     if (!await writeBlocks(
       settings.pageName,
       settings.inboxName,
@@ -152,7 +150,7 @@ function textHandlerGenerator() {
 }
 
 function photoTemplate(caption: string, id: string, url: string) {
-  return `{{renderer :local_telegram_bot-renderPhoto,${caption},${id}}}![${caption}](${url})`;
+  return `{{renderer :local_telegram_bot-showPhoto,${caption},${id}}}![${caption}](${url})`;
 }
 
 function photoHandlerGenerator(bot: Telegraf<Context>) {
@@ -176,7 +174,7 @@ function photoHandlerGenerator(bot: Telegraf<Context>) {
   logseq.App.onMacroRendererSlotted(async ({ slot, payload }) => {
     let [type, caption, photoId] = payload.arguments;
     // backward compatibility
-    if (type !== ':local_telegram_bot' && type !== ":local_telegram_bot-renderPhoto") {
+    if (type !== ':local_telegram_bot' && type !== ":local_telegram_bot-showPhoto") {
       return;
     }
 
