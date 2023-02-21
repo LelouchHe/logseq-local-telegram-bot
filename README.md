@@ -11,6 +11,7 @@ Currently, it's still under heavy development.
     * "Bot Token" is required
     * "Is Main Bot" is required for the main Logseq to handle requests from Telegram. If you have multiple Logseq open at same time, probably from different devices, make sure only one of them is set to main bot, to avoid conflicts.
     * "Authorized Users" is required to stop ineligible users sending messages to your Logseq.
+    * "Enable Customized Command" and "Enable Customized Command From Message" are for advanced users, who can create customized ts/datascript to respond to Telegram command. It works on main bot only. They're experimenting features, and could be changed later.
 3. Send texts and photos to this bot directly. The texts and photos will be automatically writen to the specified page and inbox
 4. **NOTE**: since it's a local bot, the logseq needs to be open all the time, or the bot won't run and the data sent from Telegram might be expired before bot could fetch them.
 
@@ -30,7 +31,7 @@ Currently, it's still under heavy development.
     * If it's set to a future date, the notification will wait until that date comes, regardless of the time. 
     * It now works only with scheduled/deadline.
 * Customized command system, which enable users to write datascript(query) or ts/js(run) and get response from Telegram by sending command
-    * This feature is experimenting. It might change when it's finalized.
+    * "Enable Customized Command" needs to be enabled. This feature is still experimenting. It might change when it's finalized.
     * There are 2 slash commands `Local Telegram Bot: Define Customized Query` and `Local Telegram Bot: Define Customized Run` to generate template for query/run
     * Query is for datascript, which looks like advanced query in Logseq, but it only includes query part and optional input, like below
         * [[local-telegram-bot/query]] query_name query_input0 query_input1
@@ -55,6 +56,7 @@ Currently, it's still under heavy development.
         * Users need to send `/run run_name param0 param1` to invoke above run
         * It returns in JSON
     * There is a "/help" command, to list all available commands with their signature and description
+    * When "Enable Customized Command From Message" is also enabled, users are able to add new commands from Telegram directly, as long as its format is correct
 
 ## Future features
 

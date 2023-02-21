@@ -89,9 +89,6 @@ function setupBlockContextMenu(bot: Telegraf<Context>) {
 }
 
 function setupSlashCommand(bot: Telegraf<Context>) {
-  logseq.Editor.registerSlashCommand("Local Telegram Bot: Send", async (e) => {
-    handleSendOperation(bot, e.uuid);
-  });
 }
 
 function startTimedJob(bot: Telegraf<Context>, name: string, time: Date) {
