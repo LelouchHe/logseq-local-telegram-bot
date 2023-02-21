@@ -10,7 +10,7 @@ import { log, error, showMsg, getDateString, nameof } from "./utils";
 import { runAtInterval, cancelJob } from "./timed-job";
 import { settings, initializeSettings, Settings } from "./settings";
 import { setupMessageHandlers } from "./message_handlers";
-import { setupCommandHandlers } from "./command_handlers";
+import { disableCustomizedCommands, enableCustomizedCommands, setupCommandHandlers } from "./command_handlers";
 
 type OperationHandler = (bot: Telegraf<Context>, blockId: string) => Promise<void>;
 
@@ -153,10 +153,17 @@ async function startMainBot(bot: Telegraf<Context>) {
 
   startTimedJobs(bot);
 
+  if (settings.enableCustomizedCommand) {
+    enableCustomizedCommands();
+  } else {
+    disableCustomizedCommands();
+  }
+
   log("bot has started as Main Bot");
 }
 
 async function stopMainBot(bot: Telegraf<Context>) {
+  disableCustomizedCommands();
   stopTimedJobs();
   await bot.stop();
 
@@ -185,6 +192,10 @@ async function start(bot: Telegraf<Context>) {
   }
 
   bot.token = settings.botToken;
+
+  if (settings.enableCustomizedCommand) {
+    enableCustomizedCommands();
+  }
 
   if (settings.isMainBot) {
     await startMainBot(bot);
@@ -219,6 +230,14 @@ async function main() {
 
       case nameof<Settings>("deadlineNotificationTime"):
         updateTimedJob(bot, DEADLINE_NOTIFICATION_JOB, settings.deadlineNotificationTime);
+        break;
+
+      case nameof<Settings>("enableCustomizedCommand"):
+        if (settings.enableCustomizedCommand) {
+          enableCustomizedCommands();
+        } else {
+          disableCustomizedCommands();
+        }
         break;
     }
   });

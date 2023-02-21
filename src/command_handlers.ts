@@ -1,4 +1,4 @@
-import { BlockEntity, PageEntity } from "@logseq/libs/dist/LSPlugin.user";
+import { BlockEntity, IUserOffHook, PageEntity } from "@logseq/libs/dist/LSPlugin.user";
 
 import { Telegraf, Context } from "telegraf";
 import { Message } from "typegram";
@@ -8,7 +8,7 @@ import { marked } from "marked";
 
 import { runFunction, isMessageAuthorized, log } from "./utils";
 
-export { setupCommandHandlers };
+export { setupCommandHandlers, commandTypes, enableCustomizedCommands, disableCustomizedCommands };
 
 type CommandHandler = (ctx: Context) => Promise<void>;
 
@@ -22,12 +22,12 @@ class Command {
 
 const COMMAND_PAGE_NAME = "local-telegram-bot";
 
-const prefixTypes: { [ key: string ]: string } = {
+const commandTypes: { [ key: string ]: string } = {
   [`[[${COMMAND_PAGE_NAME}/query]]`] : "query",
   [`[[${COMMAND_PAGE_NAME}/run]]`]: "run",
 };
 
-const commandHandlers: { type: string, handler: CommandHandler }[] = [
+const commandHandlers: { type: string, description: string, handler: CommandHandler }[] = [
   runHandlerGenerator(),
   queryHandlerGenerator(),
   helpHandlerGenerator()
@@ -37,7 +37,7 @@ const commands = new Map<string, { [key: string]: Command }>;
 
 function parseCommand(content: string): Command | null {
   let prefix = "";
-  for (let key in prefixTypes) {
+  for (let key in commandTypes) {
     if (content.startsWith(key)) {
       prefix = key;
       break;
@@ -56,7 +56,7 @@ function parseCommand(content: string): Command | null {
   }
 
   const command = new Command();
-  command.type = prefixTypes[prefix];
+  command.type = commandTypes[prefix];
 
   const names = parts[0].trim().split(" ");
   command.name = names[0];
@@ -68,7 +68,7 @@ function parseCommand(content: string): Command | null {
   return command;
 }
 
-async function setupCommands() {
+async function updateCommands() {
   // FIXME: no need to clear everytime
   commands.clear();
 
@@ -114,6 +114,7 @@ function runHandlerGenerator() {
   const key = "run";
   return {
     type: key,
+    description: "Customized js/ts script",
     handler: async (ctx: Context) => {
       const h = handleArgs(key, ctx.message!.text);
       if (!h) {
@@ -144,6 +145,7 @@ function queryHandlerGenerator() {
   const key = "query";
   return {
     type: key,
+    description: "Customized datascript query",
     handler: async (ctx: Context) => {
       const h = handleArgs(key, ctx.message!.text);
       if (!h) {
@@ -171,11 +173,29 @@ function queryHandlerGenerator() {
 function helpHandlerGenerator() {
   return {
     type: "help",
+    description: "List all available commands",
     handler: async (ctx: Context) => {
-      ctx.reply(`this is help: ${ctx.message?.text}`);
+      let msg = "Available commands:\n";
+      for (let { type, description, handler } of commandHandlers) {
+        msg += `/${type}: ${description}\n`;
+      }
+
+      if (commands.size > 0) {
+        msg += "\nCustomized commands:\n";
+        commands.forEach((cmds, type) => {
+          for (let subType in cmds) {
+            const cmd = cmds[subType];
+            msg += `/${type} ${subType} ${cmd.params.join(" ")}: ${cmd.description}\n`
+          }
+        });
+      }
+
+      ctx.reply(msg);
     }
   }
 }
+
+let unsubscribe: IUserOffHook = () => { };
 
 function setupCommandHandlers(bot: Telegraf<Context>) {
   for (let handler of commandHandlers) {
@@ -186,10 +206,19 @@ function setupCommandHandlers(bot: Telegraf<Context>) {
       }
     });
   }
+}
 
-  setupCommands();
-
-  const unsub = logseq.DB.onChanged((e) => {
-    setupCommands();
+function enableCustomizedCommands() {
+  unsubscribe();
+  unsubscribe = logseq.DB.onChanged((e) => {
+    updateCommands();
   });
+  updateCommands();
+  log("customized commands are enabled");
+}
+
+function disableCustomizedCommands() {
+  unsubscribe();
+  commands.clear();
+  log("customized commands are disabled");
 }

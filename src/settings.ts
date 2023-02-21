@@ -34,6 +34,10 @@ class Settings {
       if (new_settings.deadlineNotificationTime != old_settings.deadlineNotificationTime) {
         onUpdate(nameof<Settings>("deadlineNotificationTime"));  
       }
+
+      if (new_settings.enableCustomizedCommand != old_settings.enableCustomizedCommand) {
+        onUpdate(nameof<Settings>("enableCustomizedCommand"));
+      }
     });
   }
 
@@ -82,6 +86,14 @@ class Settings {
     } else {
       return null;
     }
+  }
+
+  public get enableCustomizedCommand(): boolean {
+    return this.isMainBot && logseq.settings!.enableCustomizedCommand;
+  }
+
+  public get enableCustomizedCommandFromMessage(): boolean {
+    return this.enableCustomizedCommand && logseq.settings!.enableCustomizedCommandFromMessage;
   }
 
   // below are internal persistent data
@@ -160,6 +172,20 @@ const settingsSchema: SettingSchemaDesc[] = [
     default: "",
     title: "Deadline Notification Time",
     inputAs: "datetime-local"
+  },
+  {
+    key: "enableCustomizedCommand",
+    description: "Whether to enable customized command mode, which enables eligible users to run native js/ts or query datascript. **This is still experimenting**",
+    type: "boolean",
+    default: false,
+    title: "Enable Customized Command",
+  },
+  {
+    key: "enableCustomizedCommandFromMessage",
+    description: "Whether to allow messages to include customized command, which enables eligible users to add new commands from Telegram. **This is still experimenting**",
+    type: "boolean",
+    default: false,
+    title: "Enable Customized Command From Message",
   }
 ];
 

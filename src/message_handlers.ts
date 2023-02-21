@@ -6,6 +6,7 @@ import { Message, MessageEntity } from "typegram";
 
 import { log, getDateString, isMessageAuthorized } from "./utils";
 import { settings, JOURNAL_PAGE_NAME } from "./settings";
+import { commandTypes } from "./command_handlers";
 
 export { setupMessageHandlers };
 
@@ -109,6 +110,16 @@ function textHandlerGenerator() {
     }
 
     let text = message.text;
+    if (!settings.enableCustomizedCommandFromMessage) {
+      for (let prefix in commandTypes) {
+        if (text.startsWith(prefix)) {
+          log(`command is not allowed in message: ${text}`);
+          ctx.reply("Command is not allowed in message");
+          return;
+        }
+      }
+    }
+    
     if (message.entities) {
       message.entities.sort((a, b) => a.offset - b.offset);
       let subs: string[] = [];
