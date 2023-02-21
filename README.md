@@ -29,13 +29,38 @@ Currently, it's still under heavy development.
     * Users can set the time to send each of the notifications in the settings, or disable this feature by clearing it.
     * If it's set to a future date, the notification will wait until that date comes, regardless of the time. 
     * It now works only with scheduled/deadline.
+* Customized command system, which enable users to write datascript(query) or ts/js(run) and get response from Telegram by sending command
+    * This feature is experimenting. It might change when it's finalized.
+    * There are 2 slash commands `Local Telegram Bot: Define Customized Query` and `Local Telegram Bot: Define Customized Run` to generate template for query/run
+    * Query is for datascript, which looks like advanced query in Logseq, but it only includes query part and optional input, like below
+        * [[local-telegram-bot/query]] query_name query_input0 query_input1
+        ```clojure
+            [:find (pull ?b [*])
+            :in $ ?query_input0 ?query_input1
+            :where
+            [?b :block/marker ?marker]
+            [(= ?target ?marker)]]
+        ```
+        This is the description of query to show in help command
+        * Users need to send `/query query_name query_input0 query_input1` to invoke above query
+        * It returns in JSON
+    * Run is for ts/js, which could uses all DOM and Logseq plugin apis. It looks like below
+        * [[local-telegram-bot/run]] run_name param0 param1
+        ```ts
+        let param = param0 + param1;
+        logseq.UI.showMsg(param);
+        return param;
+        ```
+        This is also the description of run to show in help command
+        * Users need to send `/run run_name param0 param1` to invoke above run
+        * It returns in JSON
+    * There is a "/help" command, to list all available commands with their signature and description
 
 ## Future features
 
 *not a full list, either not ordered by priority*
 * Change Page and Inbox from Telegram
 * Fetch customized notes
-* Save and run other commands
 * Support other types of messages
 * Support channel message
 * Convert non-plain command into correct form (like DEADLINE)
@@ -45,6 +70,7 @@ Currently, it's still under heavy development.
 * More time control over TODO notification
 * Use Agenda-plugin-style date, instead of builtin date 
 * Update task statsu from Telegram
+* Add more builtin commands
 
 ## Contribute
 
