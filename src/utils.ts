@@ -20,7 +20,7 @@ function runFunction(body: string, args: string[], params: string[] = []) {
 
   const iframe = document.createElement('iframe');
   // try best to sandbox
-  iframe.sandbox.value = "";
+  iframe.sandbox.value = "allow-same-origin";
   document.body.appendChild(iframe);
 
   // pass logseq to iframe
