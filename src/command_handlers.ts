@@ -213,7 +213,7 @@ function helpHandlerGenerator() {
 }
 
 function slashTemplate(name: string, language: string) {
-  let template = `[[${COMMAND_PAGE_NAME}/${name}]] name param0 param1\n`;
+  let template = `[[${COMMAND_PAGE_NAME}/${name}]] name param0 param1 ${DEBUG_CMD_RENDERER}\n`;
   template += `\`\`\`${language}\n\`\`\`\n`;
   template += "description";
   return template;
@@ -270,15 +270,18 @@ function createDebugResultView(result: any, logs: any[]) {
 function setupDebug() {
   logseq.provideStyle(`
     .debugCmd {
-      background-color: red;
+      background-color: orange;
+      display: inline-table;
+      cursor: pointer;
     }
     .debugCmd-try {
-      background-color: green;
+      color: green;
+      margin: 0 5px 0;
     }
     .debugCmd-param {
-      background-color: yellow;
-      margin: 5px 5px 0 0;
-      width: 100px;
+      width: 60px;
+      padding: 0 2px 0;
+      margin: 2px;
     }
     .debugCmd-result {
       position: absolute;
@@ -377,7 +380,7 @@ function setupDebug() {
       <div class="debugCmd">
         <span class="debugCmd-try"
               data-blockid="${payload.uuid}"
-              data-on-click="debugCmd_try">Try</span>
+              data-on-click="debugCmd_try">▶️</span>
         ${inputs.join("")}
       </div>
      `,
