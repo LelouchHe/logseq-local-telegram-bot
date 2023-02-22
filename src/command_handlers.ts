@@ -242,7 +242,11 @@ function createDebugResultView(result: any, logs: any[]) {
   logsDiv.className = "debugCmd-logs";
   const logsView = jsonview.create(logs);
   jsonview.render(logsView, logsDiv);
-  
+
+  // Fix json-view string parse
+  if (typeof result === "string") {
+    result = `"${result}"`;
+  }
   const resultView = jsonview.create(result);
   const resultDiv = top!.document.createElement("div") as HTMLDivElement;
   resultDiv.className = "debugCmd-result";
