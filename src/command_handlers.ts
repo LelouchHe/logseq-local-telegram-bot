@@ -6,10 +6,11 @@ import stringArgv from "string-argv";
 import minimist from "minimist";
 import { marked } from "marked";
 
+// json-view doesn't have types
 import jsonview from '@pgrabovets/json-view';
 import "@pgrabovets/json-view/src/jsonview.scss"
 
-import { runFunction, isMessageAuthorized, log, error } from "./utils";
+import { runFunction, runScript, isMessageAuthorized, log, error } from "./utils";
 
 export { setupCommandHandlers, commandTypes, enableCustomizedCommands, disableCustomizedCommands };
 
@@ -82,7 +83,7 @@ function parseCommand(content: string): Command | null {
 async function runCommand(command: Command, argv: string[]) {
   switch (command.type) {
     case "query":
-      return await logseq.DB.datascriptQuery(command.script, ...argv);
+      return await runScript(command.script, argv);
 
     case "run":
       return await runFunction(command.script, argv, command.params);
@@ -135,23 +136,6 @@ function handleArgs(key: string, text: string): { command: Command, argv: string
   }
 }
 
-async function handleResult(ctx: Context, result: any) {
-  if (result === undefined || result === null) {
-    ctx.reply("no results");
-  } else {
-    // maximum size of message is 4k
-    // how to enable users to copy uuid?
-    const msg = JSON.stringify(result);
-    const html = marked.parseInline(msg);
-
-    try {
-      await ctx.reply(html, { parse_mode: "HTML" });
-    } catch (e) {
-      ctx.reply((<Error>e).message);
-    }
-  }
-}
-
 async function handleCommand(type: string, ctx: Context) {
   const h = handleArgs(type, ctx.message!.text);
   if (!h) {
@@ -165,8 +149,22 @@ async function handleCommand(type: string, ctx: Context) {
     return;
   }
 
-  const result = await runCommand(command, argv.slice(1));
-  handleResult(ctx, result);
+  try {
+    const result = await runCommand(command, argv.slice(1));
+    if (result?.result != undefined && result?.result != null) {
+      // FIXME: maximum size of message is 4k
+      // how to enable users to copy uuid?
+      const msg = JSON.stringify(result.result);
+      const html = marked.parseInline(msg);
+      await ctx.reply(html, { parse_mode: "HTML" });
+    } else if (result?.logs && result?.logs.length > 0) {
+      ctx.reply(JSON.stringify(result.logs));
+    } else {
+      ctx.reply("unknown error");
+    }
+  } catch (e) {
+    ctx.reply((<Error>e).message);
+  }
 }
 
 function runHandlerGenerator() {
@@ -228,18 +226,7 @@ function inputTemplate(index: number, blockId: string, placeholder: string) {
                data-on-click="debugCmd_click_input" />`;
 }
 
-let unsubscribe: IUserOffHook = () => { };
-
-function setupCommandHandlers(bot: Telegraf<Context>) {
-  for (let handler of commandHandlers) {
-    bot.command(handler.type, (ctx) => {
-      if (ctx.message
-        && isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
-        handler.handler(ctx);
-      }
-    });
-  }
-
+function setupSlashCommands() {
   // FIXME: unable to un-register?
   logseq.Editor.registerSlashCommand("Local Telegram Bot: Define Customized Query", async (e) => {
     logseq.Editor.updateBlock(e.uuid, slashTemplate(QUERY_COMMAND, "clojure"));
@@ -248,7 +235,35 @@ function setupCommandHandlers(bot: Telegraf<Context>) {
   logseq.Editor.registerSlashCommand("Local Telegram Bot: Define Customized Run", async (e) => {
     logseq.Editor.updateBlock(e.uuid, slashTemplate(RUN_COMMAND, "ts"));
   });
+}
 
+function createDebugResultView(result: any, logs: any[]) {
+  const logsDiv = top!.document.createElement("div") as HTMLDivElement;
+  logsDiv.className = "debugCmd-logs";
+  const logsView = jsonview.create(logs);
+  jsonview.render(logsView, logsDiv);
+  
+  const resultView = jsonview.create(result);
+  const resultDiv = top!.document.createElement("div") as HTMLDivElement;
+  resultDiv.className = "debugCmd-result";
+
+  // make it focus-able
+  resultDiv.tabIndex = 0;
+
+  resultDiv.addEventListener("focusout", (e) => {
+    top!.document.body.removeChild(resultDiv);
+    jsonview.destroy(resultView);
+    jsonview.destroy(logsView);
+  });
+
+  jsonview.render(resultView, resultDiv);
+  resultDiv.appendChild(logsDiv);
+  top!.document.body.appendChild(resultDiv);
+
+  resultDiv.focus();
+}
+
+function setupDebug() {
   logseq.provideStyle(`
     .debugCmd {
       background-color: red;
@@ -271,6 +286,14 @@ function setupCommandHandlers(bot: Telegraf<Context>) {
       background-color: white;
       overflow: scroll;
       white-space: nowrap;
+    }
+    .debugCmd-logs {
+      height: 40%;
+      overflow: scroll;
+    }
+    .debugCmd-result > .json-container {
+      height: 60%;
+      overflow: scroll;
     }
     `);
 
@@ -297,24 +320,22 @@ function setupCommandHandlers(bot: Telegraf<Context>) {
         argv.push(input.value);
       }
 
-      const result = await runCommand(cmd, argv);
-      const view = jsonview.create(result);
+      let result: any = null;
+      let logs: any[] = [];
       
-      const resultDiv = top!.document.createElement("div") as HTMLDivElement;
-      resultDiv.className = "debugCmd-result";
+      try {
+        const commandResult = await runCommand(cmd, argv);
+        if (commandResult == null) {
+          logs.push("unknow error");
+        } else {
+          result = commandResult.result;
+          logs = commandResult.logs;
+        }
+      } catch (e) {
+        logs.push(e);
+      }
 
-      // make it focus-able
-      resultDiv.tabIndex = 0;
-      
-      resultDiv.addEventListener("focusout", (e) => {
-        console.log(e);
-        top!.document.body.removeChild(resultDiv);
-        jsonview.destroy(view);
-      });
-      top!.document.body.appendChild(resultDiv);
-      resultDiv.focus();
-
-      jsonview.render(view, resultDiv);
+      createDebugResultView(result, logs);
     },
     debugCmd_click_input(e: any) {
       const input = top!.document.querySelector(`#${e.id}`) as HTMLInputElement;
@@ -356,8 +377,24 @@ function setupCommandHandlers(bot: Telegraf<Context>) {
         ${inputs.join("")}
       </div>
      `,
-    })
+    });
   });
+}
+
+let unsubscribe: IUserOffHook = () => { };
+
+function setupCommandHandlers(bot: Telegraf<Context>) {
+  for (let handler of commandHandlers) {
+    bot.command(handler.type, (ctx) => {
+      if (ctx.message
+        && isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
+        handler.handler(ctx);
+      }
+    });
+  }
+
+  setupSlashCommands();
+  setupDebug();
 }
 
 function enableCustomizedCommands() {
