@@ -20,7 +20,7 @@ Currently, it's still under heavy development.
 * Send text and photo to Logseg
     * inlucindg forward and reply, but only content is sent. Forward from who or reply to what is not.
 * Page and Inbox can be changed from setting page
-* Users can choose to add new messages to the front or end of the inbox
+* Users can choose to add new messages to the top or bottom of the inbox
 * Send block and its children blocks to authorized users who have send messages to Logseq before
     * Right-click the block and choose "Local Telegram Bot: Send"
     * This is to get its chat id without asking users to type in
