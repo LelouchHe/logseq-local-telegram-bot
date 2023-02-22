@@ -20,6 +20,7 @@ Currently, it's still under heavy development.
 * Send text and photo to Logseg
     * inlucindg forward and reply, but only content is sent. Forward from who or reply to what is not.
 * Page and Inbox can be changed from setting page
+* Users can choose to add new messages to the front or end of the inbox
 * Send block and its children blocks to authorized users who have send messages to Logseq before
     * Right-click the block and choose "Local Telegram Bot: Send"
     * This is to get its chat id without asking users to type in
@@ -32,7 +33,7 @@ Currently, it's still under heavy development.
     * It now works only with scheduled/deadline.
 * Customized command system, which enable users to write datascript(query) or ts/js(run) and get response from Telegram by sending command
     * "Enable Customized Command" needs to be enabled. This feature is still experimenting. It might change when it's finalized.
-    * There are 2 slash commands `Local Telegram Bot: Define Customized Query` and `Local Telegram Bot: Define Customized Run` to generate template for query/run
+    * There are 2 slash commands `Local Telegram Bot: Define Customized Query` and `Local Telegram Bot: Define Customized Run` to generate template for query/run, with extra debug button to play with
     * Query is for datascript, which looks like advanced query in Logseq, but it only includes query part and optional input, like below
         * [[local-telegram-bot/query]] query_name query_input0 query_input1
         ```clojure
@@ -55,7 +56,7 @@ Currently, it's still under heavy development.
         This is also the description of run to show in help command
         * Users need to send `/run run_name param0 param1` to invoke above run
         * It returns in JSON
-    * There is a "/help" command, to list all available commands with their signature and description
+    * There is a `/help` command, to list all available commands with their signature and description
     * When "Enable Customized Command From Message" is also enabled, users are able to add new commands from Telegram directly, as long as its format is correct
 
 ## Future features

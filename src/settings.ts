@@ -72,6 +72,10 @@ class Settings {
     return logseq.settings!.inboxName;
   }
 
+  public get appendAtBottom(): boolean {
+    return logseq.settings!.appendAtBottom;
+  }
+
   public get scheduledNotificationTime() {
     if (this.isMainBot && logseq.settings!.scheduledNotificationTime) {
       return new Date(logseq.settings!.scheduledNotificationTime);
@@ -152,10 +156,17 @@ const settingsSchema: SettingSchemaDesc[] = [
   },
   {
     key: "inboxName",
-    description: "The content of the block that all regulare messages from Telegram are added to. If it's not found, messages are added to the 2nd block of the current page",
+    description: "The content of the block that all regular messages from Telegram are added to. If it's not available, a new Inbox will be created at the end of target page. If its value is empty, the messages will be added to the target page",
     type: "string",
     default: "#Inbox",
     title: "Inbox Name",
+  },
+  {
+    key: "appendAtBottom",
+    description: "If it's set to true, the new messages will be appended at the end of Inbox, instead of the front.",
+    type: "boolean",
+    default: "false",
+    title: "Append At Bottom",
   },
   {
     key: "scheduledNotificationTime",

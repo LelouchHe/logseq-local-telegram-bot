@@ -49,14 +49,16 @@ async function findPage(pageName: string): Promise<BlockEntity[]> {
   return logseq.Editor.getPageBlocksTree(pages[0].name);;
 }
 
-async function writeBlocks(pageName: string, inboxName: string, texts: string[]): Promise<boolean> {
+async function writeBlock(pageName: string, inboxName: string, text: string): Promise<boolean> {
   const pageBlocksTree = await findPage(pageName);
   if (!pageBlocksTree || pageBlocksTree.length == 0) {
     log("Request page is not available");
     return false;
   }
 
-  let inboxBlock: BlockEntity | undefined | null = pageBlocksTree[0];
+  let inboxBlock: BlockEntity | undefined | null = settings.appendAtBottom
+    ? pageBlocksTree[pageBlocksTree.length - 1]
+    : pageBlocksTree[0];
 
   if (inboxName) {
     inboxBlock = pageBlocksTree.find((block: { content: string }) => {
@@ -67,21 +69,20 @@ async function writeBlocks(pageName: string, inboxName: string, texts: string[])
         pageBlocksTree[pageBlocksTree.length - 1].uuid,
         inboxName,
         {
-          before: pageBlocksTree[pageBlocksTree.length - 1].content ? false : true,
+          before: false,
           sibling: true
         }
       );
     }
   }
+
   if (!inboxBlock) {
     log(`Unable to find Inbox: ${inboxName}`);
     return false;
   }
 
-  const targetBlock = inboxBlock.uuid;
-  const blocks = texts.map(t => ({ content: t }));
-  const params = { before: true, sibling: !inboxName };
-  await logseq.Editor.insertBatchBlock(targetBlock, blocks, params);
+  const params = { before: !settings.appendAtBottom, sibling: !inboxName };
+  await logseq.Editor.insertBlock(inboxBlock.uuid, text, params);
   return true;
 }
 
@@ -134,12 +135,11 @@ function textHandlerGenerator() {
       text = subs.join("");
     }
 
-    if (!await writeBlocks(
+    if (!await writeBlock(
       settings.pageName,
       settings.inboxName,
-      [text])) {
+      text)) {
       ctx.reply("Failed to write this to Logseq");
-      return;
     }
   }
 
@@ -163,12 +163,12 @@ function photoHandlerGenerator(bot: Telegraf<Context>) {
     const lastPhoto = message.photo[message.photo.length - 1];
     const photoUrl = await ctx.telegram.getFileLink(lastPhoto.file_id);
     const caption = message.caption ?? DEFAULT_CAPTION;
-    await writeBlocks(
+    if (!await writeBlock(
       settings.pageName,
       settings.inboxName,
-      [
-        photoTemplate(caption, lastPhoto.file_id, photoUrl)
-      ]);
+      photoTemplate(caption, lastPhoto.file_id, photoUrl))) {
+      ctx.reply("Failed to write this to Logseq");
+    }
   }
 
   logseq.App.onMacroRendererSlotted(async ({ slot, payload }) => {
