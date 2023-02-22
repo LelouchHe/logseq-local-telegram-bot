@@ -7,6 +7,7 @@ import minimist from "minimist";
 import { marked } from "marked";
 
 // json-view doesn't have types
+// @ts-ignore
 import jsonview from '@pgrabovets/json-view';
 import "@pgrabovets/json-view/src/jsonview.scss"
 
