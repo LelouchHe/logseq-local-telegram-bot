@@ -6,6 +6,9 @@ import stringArgv from "string-argv";
 import minimist from "minimist";
 import { marked } from "marked";
 
+import jsonview from '@pgrabovets/json-view';
+import "@pgrabovets/json-view/src/jsonview.scss"
+
 import { runFunction, isMessageAuthorized, log, error } from "./utils";
 
 export { setupCommandHandlers, commandTypes, enableCustomizedCommands, disableCustomizedCommands };
@@ -264,10 +267,15 @@ function setupCommandHandlers(bot: Telegraf<Context>) {
       left: 50%;
       transform: translate(-50%,-50%);
       height: 60%;
+      width: 80%;
       background-color: white;
-      overflow-y: scroll;
+      overflow: scroll;
+      white-space: nowrap;
     }
     `);
+
+  let css = document.querySelector("style") as HTMLStyleElement;
+  logseq.provideStyle(css.textContent!);
 
   logseq.provideModel({
     async debugCmd_try(e: any) {
@@ -290,16 +298,23 @@ function setupCommandHandlers(bot: Telegraf<Context>) {
       }
 
       const result = await runCommand(cmd, argv);
+      const view = jsonview.create(result);
+      
+      const resultDiv = top!.document.createElement("div") as HTMLDivElement;
+      resultDiv.className = "debugCmd-result";
 
-      const textArea = top!.document.createElement("textarea") as HTMLTextAreaElement;
-      textArea.className = "debugCmd-result";
-      textArea.value = JSON.stringify(result, null, 2);
-      textArea.readOnly = true;
-      textArea.addEventListener("focusout", (e) => {
-        top!.document.body.removeChild(textArea);
+      // make it focus-able
+      resultDiv.tabIndex = 0;
+      
+      resultDiv.addEventListener("focusout", (e) => {
+        console.log(e);
+        top!.document.body.removeChild(resultDiv);
+        jsonview.destroy(view);
       });
-      top!.document.body.appendChild(textArea);
-      textArea.focus();
+      top!.document.body.appendChild(resultDiv);
+      resultDiv.focus();
+
+      jsonview.render(view, resultDiv);
     },
     debugCmd_click_input(e: any) {
       const input = top!.document.querySelector(`#${e.id}`) as HTMLInputElement;

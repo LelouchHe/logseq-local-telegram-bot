@@ -9,6 +9,10 @@
     "build": "parcel build --public-url . --no-source-maps index.html"
   },
   "devDependencies": {
+    "@parcel/transformer-sass": "2.8.3",
+    "@types/marked": "^4.0.8",
+    "@types/minimist": "^1.2.2",
+    "@types/string-argv": "^0.3.0",
     "buffer": "^5.5.0",
     "crypto-browserify": "^3.12.0",
     "events": "^3.3.0",
@@ -24,9 +28,7 @@
   },
   "dependencies": {
     "@logseq/libs": "^0.0.14",
-    "@types/marked": "^4.0.8",
-    "@types/minimist": "^1.2.2",
-    "@types/string-argv": "^0.3.0",
+    "@pgrabovets/json-view": "^2.7.1",
     "marked": "^4.2.12",
     "minimist": "^1.2.8",
     "string-argv": "^0.3.1",
