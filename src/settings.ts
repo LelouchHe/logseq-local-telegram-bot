@@ -165,7 +165,7 @@ const settingsSchema: SettingSchemaDesc[] = [
     key: "appendAtBottom",
     description: "If it's set to true, the new messages will be appended at the end of Inbox, instead of the front.",
     type: "boolean",
-    default: "false",
+    default: false,
     title: "Append At Bottom",
   },
   {
