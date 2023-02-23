@@ -11,9 +11,10 @@ import { marked } from "marked";
 import jsonview from '@pgrabovets/json-view';
 import "@pgrabovets/json-view/src/jsonview.scss"
 
+import { settings } from "./settings";
 import { runFunction, runScript, isMessageAuthorized, log, error } from "./utils";
 
-export { setupCommandHandlers, commandTypes, enableCustomizedCommands, disableCustomizedCommands };
+export { setupCommandHandlers, enableCustomizedCommands, disableCustomizedCommands };
 
 type CommandHandler = (ctx: Context) => Promise<void>;
 
@@ -121,30 +122,46 @@ async function updateCommands() {
   }
 }
 
-function handleArgs(key: string, text: string): { command: Command, argv: string[] } | null {
+function handleArgs(key: string, args: string): { command: Command, argv: string[] } | null {
   if (!commands.has(key)) {
     return null;
   }
 
-  const argv = minimist(stringArgv(text))._;
-  if (!commands.get(key)![argv[1]]) {
+  const cmds = commands.get(key)!;
+
+  const argv = minimist(stringArgv(args))._;
+  if (!cmds[argv[0]]) {
     return null;
   }
 
   return {
-    command: commands.get(key)![argv[1]],
-    argv: argv.slice(1)
+    command: cmds[argv[0]],
+    argv: argv
   }
 }
 
-async function handleCommand(type: string, ctx: Context) {
-  const h = handleArgs(type, ctx.message!.text);
+async function processCommand(type: string, ctx: Context) {
+  const prefix = `/${type}`;
+  const text = ctx.message!.text;
+  
+  // this should never happen
+  if (!text.startsWith(prefix)) {
+    error(`invalid command: ${type}: ${text}`);
+    ctx.reply("not a valid command");
+    return;
+  }
+
+  const args = text.substring(prefix.length + 1);
+  const h = handleArgs(type, args);
   if (!h) {
     ctx.reply("not a valid command");
     return;
   }
 
-  const { command, argv } = h;
+  await handleCommand(h.command, h.argv, ctx);
+}
+
+async function handleCommand(command: Command, argv: string[], ctx: Context) {
   if (!command.script) {
     ctx.reply("not a valid command");
     return;
@@ -173,7 +190,7 @@ function runHandlerGenerator() {
     type: RUN_COMMAND,
     description: "Customized js/ts script",
     handler: async (ctx: Context) => {
-      handleCommand(RUN_COMMAND, ctx);
+      processCommand(RUN_COMMAND, ctx);
     }
   }
 }
@@ -183,7 +200,7 @@ function queryHandlerGenerator() {
     type: QUERY_COMMAND,
     description: "Customized datascript query",
     handler: async (ctx: Context) => {
-      handleCommand(QUERY_COMMAND, ctx);
+      processCommand(QUERY_COMMAND, ctx);
     }
   }
 }
@@ -389,6 +406,49 @@ function setupDebug() {
   });
 }
 
+function setupCommandMiddleware(bot: Telegraf<Context>) {
+  bot.use((ctx, next) => {
+    if (!ctx.message?.text) {
+      next();
+      return;
+    }
+
+    const text = ctx.message.text;
+    if (!settings.enableCustomizedCommandFromMessage) {
+      for (let prefix in commandTypes) {
+        if (text.startsWith(prefix)) {
+          log(`command is not allowed in message: ${text}`);
+          ctx.reply("Command is not allowed in message");
+          return;
+        }
+      }
+    }
+
+    if (text.startsWith("/")) {
+      let handled = false;
+      commands.forEach((cmds, type) => {
+        if (handled) {
+          return;
+        }
+
+        const h = handleArgs(type, text.substring(1));
+        if (!h) {
+          return;
+        }
+
+        handled = true;
+        handleCommand(h.command, h.argv, ctx);
+      });
+
+      if (handled) {
+        return;
+      }
+    }
+
+    next();
+  });
+}
+
 let unsubscribe: IUserOffHook = () => { };
 
 function setupCommandHandlers(bot: Telegraf<Context>) {
@@ -401,6 +461,7 @@ function setupCommandHandlers(bot: Telegraf<Context>) {
     });
   }
 
+  setupCommandMiddleware(bot);
   setupSlashCommands();
   setupDebug();
 }
