@@ -172,11 +172,11 @@ async function handleCommand(command: Command, argv: string[], ctx: Context) {
     if (result?.result != undefined && result?.result != null) {
       // FIXME: maximum size of message is 4k
       // how to enable users to copy uuid?
-      const msg = JSON.stringify(result.result);
+      const msg = JSON.stringify(result.result, null, 2);
       const html = marked.parseInline(msg);
       await ctx.reply(html, { parse_mode: "HTML" });
     } else if (result?.logs && result?.logs.length > 0) {
-      ctx.reply(JSON.stringify(result.logs));
+      ctx.reply(JSON.stringify(result.logs, null, 2));
     } else {
       ctx.reply("unknown error");
     }
@@ -426,7 +426,7 @@ function setupCommandMiddleware(bot: Telegraf<Context>) {
 
     if (text.startsWith("/")) {
       let handled = false;
-      commands.forEach((cmds, type) => {
+      commands.forEach((_, type) => {
         if (handled) {
           return;
         }
