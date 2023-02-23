@@ -220,7 +220,7 @@ function helpHandlerGenerator() {
         commands.forEach((cmds, type) => {
           for (let subType in cmds) {
             const cmd = cmds[subType];
-            msg += `/${type} ${subType} ${cmd.params.join(" ")}: ${cmd.description}\n`
+            msg += `[/${type} ${subType}|/${subType}] ${cmd.params.join(" ")}: ${cmd.description}\n`
           }
         });
       }
