@@ -262,7 +262,7 @@ function createDebugResultView(result: any, logs: any[]) {
   jsonview.render(logsView, logsDiv);
 
   // Fix json-view string parse
-  if (typeof result === "string") {
+  if (typeof result === "string" && !result.startsWith("\"") && !result.endsWith("\"")) {
     result = `"${result}"`;
   }
   const resultView = jsonview.create(result);
