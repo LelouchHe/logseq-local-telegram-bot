@@ -256,7 +256,7 @@ function setupSlashCommands() {
 }
 
 function createDebugResultView(result: any, logs: any[]) {
-  const logsDiv = top!.document.createElement("div") as HTMLDivElement;
+  const logsDiv = document.createElement("div") as HTMLDivElement;
   logsDiv.className = "debugCmd-logs";
   const logsView = jsonview.create(logs);
   jsonview.render(logsView, logsDiv);
@@ -266,23 +266,26 @@ function createDebugResultView(result: any, logs: any[]) {
     result = `"${result}"`;
   }
   const resultView = jsonview.create(result);
-  const resultDiv = top!.document.createElement("div") as HTMLDivElement;
+  const resultDiv = document.createElement("div") as HTMLDivElement;
   resultDiv.className = "debugCmd-result";
 
-  // make it focus-able
-  resultDiv.tabIndex = 0;
+  const closeDebug = (e: Event) => {
+    const target = e.target as HTMLElement;
 
-  resultDiv.addEventListener("focusout", (e) => {
-    top!.document.body.removeChild(resultDiv);
-    jsonview.destroy(resultView);
-    jsonview.destroy(logsView);
-  });
-
+    if (target.closest(".debugCmd-result") === null && resultDiv.parentElement == document.body) {
+      logseq.toggleMainUI();
+      document.body.removeChild(resultDiv);
+      jsonview.destroy(resultView);
+      jsonview.destroy(logsView);
+      document.removeEventListener("click", closeDebug);
+    }
+  };
+  document.addEventListener("click", closeDebug);
+  logseq.showMainUI();
   jsonview.render(resultView, resultDiv);
   resultDiv.appendChild(logsDiv);
-  top!.document.body.appendChild(resultDiv);
 
-  resultDiv.focus();
+  document.body.appendChild(resultDiv);
 }
 
 function setupDebug() {
@@ -300,25 +303,6 @@ function setupDebug() {
       width: 60px;
       padding: 0 2px 0;
       margin: 2px;
-    }
-    .debugCmd-result {
-      position: absolute;
-      top:  50%;
-      left: 50%;
-      transform: translate(-50%,-50%);
-      height: 60%;
-      width: 80%;
-      background-color: white;
-      overflow: scroll;
-      white-space: nowrap;
-    }
-    .debugCmd-logs {
-      height: 40%;
-      overflow: scroll;
-    }
-    .debugCmd-result > .json-container {
-      height: 60%;
-      overflow: scroll;
     }
     `);
 
