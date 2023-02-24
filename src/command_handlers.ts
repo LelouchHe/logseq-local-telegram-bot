@@ -273,6 +273,7 @@ function createDebugResultView(result: any, logs: any[]) {
   const closeDebug = (e: Event) => {
     const target = e.target as HTMLElement;
 
+    // close resultDiv when outside is clicked
     if (target.closest(".debugCmd-result") === null && resultDiv.parentElement == document.body) {
       logseq.toggleMainUI();
       document.body.removeChild(resultDiv);
