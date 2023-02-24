@@ -261,7 +261,8 @@ function createDebugResultView(result: any, logs: any[]) {
   const logsView = jsonview.create(logs);
   jsonview.render(logsView, logsDiv);
 
-  // Fix json-view string parse
+  // json-view assume string as json in string, instead of simple string
+  // https://github.com/pgrabovets/json-view/blob/f37382acb982ffd5e43c4df335b3eaa45f8f2c48/src/json-view.js#L187
   if (typeof result === "string" && !result.startsWith("\"") && !result.endsWith("\"")) {
     result = `"${result}"`;
   }
