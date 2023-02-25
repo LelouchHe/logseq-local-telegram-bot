@@ -301,20 +301,22 @@ function setupDebug() {
     }
     `);
 
-  top!.document.body.addEventListener("mousedown", (e) => {
-    console.log("mousedown", e);
-    const target = e.target as HTMLElement;
-    if (target && target.className == "debugCmd-param") {
-      target.focus();
-    }
-  }, true);
-  top!.document.body.addEventListener("click", (e) => {
-    console.log("click", e);
-    const target = e.target as HTMLElement;
-    if (target && target.className == "debugCmd-param") {
-      target.focus();
-    }
-  }, true);
+  if (settings.enableCustomizedCommand) {
+    top!.document.body.addEventListener("mousedown", (e) => {
+      console.log("mousedown", e);
+      const target = e.target as HTMLElement;
+      if (target && target.className == "debugCmd-param") {
+        target.focus();
+      }
+    }, true);
+    top!.document.body.addEventListener("click", (e) => {
+      console.log("click", e);
+      const target = e.target as HTMLElement;
+      if (target && target.className == "debugCmd-param") {
+        target.focus();
+      }
+    }, true);
+  }
 
   logseq.provideModel({
     async debugCmd_try(e: any) {
