@@ -237,13 +237,6 @@ function slashTemplate(name: string, language: string) {
   return template;
 }
 
-function inputTemplate(index: number, blockId: string, placeholder: string) {
-  return `<input id="param${index}-${blockId}"
-               class="debugCmd-param"
-               placeholder="${placeholder}"
-               data-on-click="debugCmd_click_input" />`;
-}
-
 function setupSlashCommands() {
   // FIXME: unable to un-register?
   logseq.Editor.registerSlashCommand("Local Telegram Bot: Define Customized Query", async (e) => {
@@ -308,8 +301,20 @@ function setupDebug() {
     }
     `);
 
-  let css = document.querySelector("style") as HTMLStyleElement;
-  logseq.provideStyle(css.textContent!);
+  top!.document.body.addEventListener("mousedown", (e) => {
+    console.log("mousedown", e);
+    const target = e.target as HTMLElement;
+    if (target && target.className == "debugCmd-param") {
+      target.focus();
+    }
+  }, true);
+  top!.document.body.addEventListener("click", (e) => {
+    console.log("click", e);
+    const target = e.target as HTMLElement;
+    if (target && target.className == "debugCmd-param") {
+      target.focus();
+    }
+  }, true);
 
   logseq.provideModel({
     async debugCmd_try(e: any) {
@@ -348,9 +353,8 @@ function setupDebug() {
 
       createDebugResultView(result, logs);
     },
-    debugCmd_click_input(e: any) {
-      const input = top!.document.querySelector(`#${e.id}`) as HTMLInputElement;
-      input!.focus();
+    debugCmd_input(e: any) {
+      console.log("debugCmd_input", e);
     }
   });
 
@@ -372,11 +376,6 @@ function setupDebug() {
       return;
     }
 
-    const inputs: string[] = [];
-    for (let i = 0; i < cmd.params.length; i++) {
-      inputs.push(inputTemplate(i, payload.uuid, cmd.params[i]));
-    }
-
     logseq.provideUI({
       key: payload.uuid,
       slot,
@@ -385,7 +384,10 @@ function setupDebug() {
         <span class="debugCmd-try"
               data-blockid="${payload.uuid}"
               data-on-click="debugCmd_try">▶️</span>
-        ${inputs.join("")}
+        <input data-blockid="${payload.uuid}"
+               class="debugCmd-param"
+               placeholder="${cmd.params.join(" ")}"
+               data-on-input="debugCmd_input" />
       </div>
      `,
     });
