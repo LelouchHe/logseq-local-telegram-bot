@@ -302,7 +302,7 @@ function setupDebug() {
     `);
 
   if (settings.enableCustomizedCommand) {
-    top!.document.body.addEventListener("mouseenter", (e) => {
+    top?.document.body.addEventListener("mouseenter", (e) => {
       console.log("mouseenter", e);
       const target = e.target as HTMLElement;
       if (target && target.className == "debugCmd-param") {
