@@ -302,15 +302,15 @@ function setupDebug() {
     `);
 
   if (settings.enableCustomizedCommand) {
-    top!.document.body.addEventListener("mousedown", (e) => {
-      console.log("mousedown", e);
+    top!.document.body.addEventListener("mouseenter", (e) => {
+      console.log("mouseenter", e);
       const target = e.target as HTMLElement;
       if (target && target.className == "debugCmd-param") {
         target.focus();
       }
     }, true);
-    top!.document.body.addEventListener("click", (e) => {
-      console.log("click", e);
+    document.body.addEventListener("mouseenter", (e) => {
+      console.log("mouseenter", e);
       const target = e.target as HTMLElement;
       if (target && target.className == "debugCmd-param") {
         target.focus();
