@@ -67,16 +67,34 @@ body {
   position: relative;
 }
 
-#playground .code {
-  height: 40%;
+@media screen and (max-width: 800px) {
+  #playground .code {
+    height: 40%;
+  }
+
+  #playground .result {
+    height: 25%;
+  }
+
+  #playground .logs {
+    height: 16%;
+  }
 }
 
-#playground .result {
-  height: 25%;
-}
+@media screen and (min-width: 800px) {
+  #playground .code {
+    height: 85%;
+    width: 55%;
+    float: left;
+  }
 
-#playground .logs {
-  height: 16%;
+  #playground .result {
+    height: 50%;
+  }
+
+  #playground .logs {
+    height: 33%;
+  }
 }
 
 #playground .content {
