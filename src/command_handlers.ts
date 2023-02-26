@@ -301,24 +301,6 @@ function setupDebug() {
     }
     `);
 
-  if (settings.enableCustomizedCommand) {
-    document.addEventListener("mouseenter", (e) => {
-      console.log("document.mouseenter", e);
-      const target = e.target as HTMLElement;
-      if (target && target.className == "debugCmd-param") {
-        target.focus();
-      }
-    }, true);
-
-    top?.document.addEventListener("mouseenter", (e) => {
-      console.log("top.mouseenter", e);
-      const target = e.target as HTMLElement;
-      if (target && target.className == "debugCmd-param") {
-        target.focus();
-      }
-    }, true);
-  }
-
   logseq.provideModel({
     async debugCmd_try(e: any) {
       const { blockid } = e.dataset;

@@ -6,7 +6,7 @@ import { Telegraf, Context  } from "telegraf";
 import { marked } from "marked";
 
 // internal
-import { log, error, showMsg, getDateString, nameof } from "./utils";
+import { log, error, showError, getDateString, nameof } from "./utils";
 import { runAtInterval, cancelJob } from "./timed-job";
 import { settings, initializeSettings, Settings } from "./settings";
 import { setupMessageHandlers } from "./message_handlers";
@@ -63,12 +63,12 @@ function convertBlocksToText(root: BlockEntity, tab: string, indent: string): st
 
 async function handleSendOperation(bot: Telegraf<Context>, blockId: string) {
   if (Object.keys(settings.chatIds).length == 0) {
-    showMsg("Authorized users need to \"/register\" first");
+    showError("Authorized users need to \"/register\" first");
     return;
   }
   const root = await logseq.Editor.getBlock(blockId, { includeChildren: true });
   if (!root) {
-    showMsg("Fail to get block");
+    showError("Fail to get block");
     return;
   }
 
@@ -141,7 +141,7 @@ async function startMainBot(bot: Telegraf<Context>) {
     await bot.launch();
   } catch (e) {
     error("bot failed to launch");
-    showMsg("Bot Token is not valid");
+    showError("Bot Token is not valid");
     logseq.showSettingsUI();
 
     // rethrow to stop the process
@@ -242,7 +242,7 @@ async function main() {
   setupBot(bot);
 
   if (!settings.botToken) {
-    showMsg("Bot Token is not valid");
+    showError("Bot Token is not valid");
     logseq.showSettingsUI();
     return;
   }

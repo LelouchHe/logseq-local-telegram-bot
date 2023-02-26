@@ -1,7 +1,7 @@
 import "@logseq/libs";
 import { SettingSchemaDesc } from "@logseq/libs/dist/LSPlugin.user";
 
-import { showMsg, nameof } from "./utils";
+import { showError, nameof } from "./utils";
 
 export { Settings, settings, initializeSettings, JOURNAL_PAGE_NAME };
 
@@ -19,7 +19,7 @@ class Settings {
         if (settings.botToken) {
           onUpdate(nameof<Settings>("botToken"));
         } else {
-          showMsg("Bot Token is not valid");
+          showError("Bot Token is not valid");
         }
       }
 

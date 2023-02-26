@@ -5,7 +5,7 @@ import { Message } from "typegram";
 
 import { settings } from "./settings";
 
-export { log, error, showMsg, getDateString, isMessageAuthorized, nameof, runFunction, runScript };
+export { log, error, showMsg, showError, getDateString, isMessageAuthorized, nameof, runFunction, runScript };
 
 const PROJECT_NAME = "Local Telegram Bot";
 
@@ -66,6 +66,10 @@ function error(message: string) {
 
 function showMsg(message: string) {
   logseq.UI.showMsg(format(message));
+}
+
+function showError(message: string) {
+  logseq.UI.showMsg(format(message), "error");
 }
 
 function getDateString(date: Date) {
