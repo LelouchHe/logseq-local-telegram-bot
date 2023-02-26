@@ -2,22 +2,22 @@ import "@logseq/libs";
 
 import stringArgv from "string-argv";
 import minimist from "minimist";
+import { EditorView, basicSetup } from "codemirror";
+import { javascript } from "@codemirror/lang-javascript";
 
 // json-view doesn't have types
 // @ts-ignore
 import jsonview from '@pgrabovets/json-view';
 import "@pgrabovets/json-view/src/jsonview.scss"
 
-import { parseCommand, runCommand, COMMAND_PAGE_NAME, QUERY_COMMAND, RUN_COMMAND, DEBUG_CMD_RENDERER } from "./command-utils";
+import { Command, parseCommand, runCommand, stringifyCommand } from "./command-utils";
 import { log } from "./utils";
 
 export { setupCommandPlayground };
 
-function createDebugResultView(result: any, logs: any[]) {
-  const logsDiv = document.createElement("div") as HTMLDivElement;
-  logsDiv.className = "debugCmd-logs";
-  const logsView = jsonview.create(logs);
-  jsonview.render(logsView, logsDiv);
+function showResult(result: any, logs: any[]) {
+  const resultContent = document.querySelector("#playground .result .content") as HTMLDivElement;
+  const logsContent = document.querySelector("#playground .logs .content") as HTMLDivElement;
 
   // json-view assume string as json in string, instead of simple string
   // https://github.com/pgrabovets/json-view/blob/f37382acb982ffd5e43c4df335b3eaa45f8f2c48/src/json-view.js#L187
@@ -25,27 +25,73 @@ function createDebugResultView(result: any, logs: any[]) {
     result = `"${result}"`;
   }
   const resultView = jsonview.create(result);
-  const resultDiv = document.createElement("div") as HTMLDivElement;
-  resultDiv.className = "debugCmd-result";
+  jsonview.render(resultView, resultContent);
 
-  const closeDebug = (e: Event) => {
-    const target = e.target as HTMLElement;
+  const logsView = jsonview.create(logs);
+  jsonview.render(logsView, logsContent);
+}
 
-    // close resultDiv when outside is clicked
-    if (target.closest(".debugCmd-result") === null && resultDiv.parentElement == document.body) {
-      logseq.toggleMainUI();
-      document.body.removeChild(resultDiv);
-      jsonview.destroy(resultView);
-      jsonview.destroy(logsView);
-      document.removeEventListener("click", closeDebug);
+function showPlayground(blockId: string, command: Command) {
+  const blockSpan = document.querySelector("#playground .block") as HTMLSpanElement;
+  const closeButton = document.querySelector("#playground .close") as HTMLElement;
+  const signatureInput = document.querySelector("#playground .signature") as HTMLInputElement;
+  const argsInput = document.querySelector("#playground .args") as HTMLInputElement;
+  const debugButton = document.querySelector("#playground .debug") as HTMLSpanElement;
+  const codeContent = document.querySelector("#playground .code .content") as HTMLDivElement;
+  const resultContent = document.querySelector("#playground .result .content") as HTMLDivElement;
+  const logsContent = document.querySelector("#playground .logs .content") as HTMLDivElement;
+
+  blockSpan.innerText = blockId;
+  signatureInput.value = [command.name, ...command.params].join(" ");
+  argsInput.value = "";
+  argsInput.placeholder = command.params.join(" ");
+  codeContent.innerHTML = "";
+  resultContent.innerHTML = "";
+  logsContent.innerHTML = "";
+
+  const codeView = new EditorView({
+    doc: command.script,
+    extensions: [basicSetup, javascript()],
+    parent: codeContent
+  });
+
+  async function startDebug() {
+    resultContent.innerHTML = "";
+    logsContent.innerHTML = "";
+
+    const args = argsInput.value;
+    const argv = minimist(stringArgv(args))._;
+
+    let result: any = null;
+    let logs: any[] = [];
+
+    try {
+      const commandResult = await runCommand(command, argv);
+      if (commandResult == null) {
+        logs.push("unknow error");
+      } else {
+        result = commandResult.result;
+        logs = commandResult.logs;
+      }
+    } catch (e) {
+      logs.push(e);
     }
-  };
-  document.addEventListener("click", closeDebug);
-  logseq.showMainUI();
-  jsonview.render(resultView, resultDiv);
-  resultDiv.appendChild(logsDiv);
 
-  document.body.appendChild(resultDiv);
+    showResult(result, logs);
+  }
+
+  function endDebug() {
+    command.script = codeView.state.doc.toJSON().join("\n");
+    logseq.Editor.updateBlock(blockId, stringifyCommand(command));
+
+    logseq.hideMainUI();
+    debugButton.removeEventListener("click", startDebug);
+    closeButton.removeEventListener("click", endDebug);
+  }
+
+  debugButton.addEventListener("click", startDebug);
+  closeButton.addEventListener("click", endDebug);
+  logseq.showMainUI();
 }
 
 function setupCommandPlayground() {
@@ -56,21 +102,9 @@ function setupCommandPlayground() {
       cursor: pointer;
     }
     `);
-  
-  const closeButton = document.querySelector("#playground .close") as HTMLElement;
-  const blockSpan = document.querySelector("#playground .block") as HTMLSpanElement;
-  const signatureInput = document.querySelector("#playground .signature") as HTMLInputElement;
-  const argsInput = document.querySelector("#playground .args") as HTMLInputElement;
-  const codeContent = document.querySelector("#playground .code .content pre code") as HTMLElement;
-  const resultContent = document.querySelector("#playground .result .content") as HTMLDivElement;
-  const logsContent = document.querySelector("#playground .logs .content") as HTMLDivElement;
-
-  closeButton.addEventListener("click", () => {
-    logseq.hideMainUI();
-  });
 
   logseq.provideModel({
-    async cmdpg_open(e: any) {
+    async command_playground_open(e: any) {
       const { blockid } = e.dataset;
       const block = await logseq.Editor.getBlock(blockid);
       if (!block) {
@@ -83,7 +117,7 @@ function setupCommandPlayground() {
         return;
       }
 
-      logseq.showMainUI();
+      showPlayground(blockid, cmd);
     }
   });
 
@@ -99,7 +133,7 @@ function setupCommandPlayground() {
       template: `
         <span class="command-playground-open"
               data-blockid="${payload.uuid}"
-              data-on-click="cmdpg_open">▶</span>
+              data-on-click="command_playground_open">▶</span>
         `,
     });
   });

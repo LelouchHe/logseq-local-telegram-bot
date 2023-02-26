@@ -3,7 +3,7 @@ import { LSPluginUser } from "@logseq/libs/dist/LSPlugin.user";
 
 import { log, error } from "./utils";
 
-export { Command, parseCommand, runCommand, commandTypes, COMMAND_PAGE_NAME, QUERY_COMMAND, RUN_COMMAND, DEBUG_CMD_RENDERER };
+export { Command, parseCommand, runCommand, stringifyCommand, commandTypes, COMMAND_PAGE_NAME, QUERY_COMMAND, RUN_COMMAND, DEBUG_CMD_RENDERER };
 
 class Command {
   public type: string = "";
@@ -26,7 +26,7 @@ const commandTypes: { [key: string]: string } = {
 
 // FIXME: not that sandboxed
 // function needs to be run here, not outside iframe
-async function runFunction(body: string, args: string[], params: string[] = []) {
+async function runFunction(body: string, argv: any[], params: string[] = []) {
   const func = `function(${params.join(", ")}) { "use stricts"; ${body} }`;
   const wrap = `{ return async ${func}; };`;
 
@@ -45,7 +45,7 @@ async function runFunction(body: string, args: string[], params: string[] = []) 
   iframe.contentWindow!.self.console.error = newLog;
 
   const sandboxedFunc: Function = new iframe.contentWindow!.self.Function(wrap).call(null);
-  const result = await sandboxedFunc.apply(null, args);
+  const result = await sandboxedFunc.apply(null, argv);
   document.body.removeChild(iframe);
 
   return {
@@ -54,7 +54,7 @@ async function runFunction(body: string, args: string[], params: string[] = []) 
   };
 }
 
-async function runScript(script: string, inputs: string[]) {
+async function runScript(script: string, inputs: any[]) {
   return {
     result: await logseq.DB.datascriptQuery(script, ...inputs),
     logs: [] as any[]
@@ -93,13 +93,13 @@ function parseCommand(content: string): Command | null {
   command.name = names[0];
   command.params = names.slice(1);
 
-  command.script = parts[1].substring(parts[1].indexOf("\n"));
+  command.script = parts[1].substring(parts[1].indexOf("\n")).trim();
   command.description = parts.length == 3 ? parts[2].trim() : "";
 
   return command;
 }
 
-async function runCommand(command: Command, argv: string[]) {
+async function runCommand(command: Command, argv: any[]) {
   switch (command.type) {
     case "query":
       return await runScript(command.script, argv);
@@ -111,4 +111,30 @@ async function runCommand(command: Command, argv: string[]) {
       error(`invalid command type: ${command.type}`);
       return null;
   }
+}
+
+function stringifyCommand(command: Command): string {
+  let prefix = "";
+  for (let key in commandTypes) {
+    if (commandTypes[key] === command.type) {
+      prefix = key;
+      break;
+    }
+  }
+
+  if (!prefix) {
+    log(`command is not valid: ${command.type}`);
+    return "";
+  }
+
+  // FIXME: remove this
+  const language = command.type == QUERY_COMMAND ? "clojure" : "js";
+
+  const lines: string[] = [
+    `${prefix} ${command.name} ${command.params.join(" ")} ${DEBUG_CMD_RENDERER}\n`,
+    "```" + language + "\n" + command.script + "\n```\n",
+    `${command.description}\n`
+  ];
+
+  return lines.join("");
 }

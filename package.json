@@ -10,6 +10,7 @@
   },
   "devDependencies": {
     "@parcel/transformer-sass": "2.8.3",
+    "@types/codemirror": "^5.60.7",
     "@types/marked": "^4.0.8",
     "@types/minimist": "^1.2.2",
     "@types/string-argv": "^0.3.0",
@@ -27,8 +28,10 @@
     "util": "^0.12.5"
   },
   "dependencies": {
+    "@codemirror/lang-javascript": "^6.1.4",
     "@logseq/libs": "^0.0.14",
     "@pgrabovets/json-view": "^2.7.1",
+    "codemirror": "^6.0.1",
     "marked": "^4.2.12",
     "minimist": "^1.2.8",
     "string-argv": "^0.3.1",
