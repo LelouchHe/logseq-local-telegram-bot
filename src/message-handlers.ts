@@ -12,6 +12,8 @@ export { setupMessageHandlers };
 type MessageHandler = (ctx: Context, message: Message.ServiceMessage) => Promise<void>;
 type EntityHandler = (text: string, entity: MessageEntity) => string;
 
+// FIXME: it matches all showPhoto, instead of current one
+const SHOW_PHOTO_RENDERER_REGEX = /{{renderer :local_telegram_bot-showPhoto[^}]*}}!\[[^\]]*\]\([^\)]*\)/;
 const DEFAULT_CAPTION = "no caption";
 
 const entityHandlers: { [ type: string ]: EntityHandler } = {
@@ -160,10 +162,18 @@ function photoHandlerGenerator(bot: Telegraf<Context>) {
     const lastPhoto = message.photo[message.photo.length - 1];
     const photoUrl = await ctx.telegram.getFileLink(lastPhoto.file_id);
     const caption = message.caption ?? DEFAULT_CAPTION;
+    let text = photoTemplate(caption, lastPhoto.file_id, photoUrl);
+    if (settings.addTimestamp) {
+      const receiveDate = new Date();
+      receiveDate.setTime(message.date * 1000);
+
+      text = `${getTimestampString(receiveDate)} - ${text}`;
+    }
+
     if (!await writeBlock(
       settings.pageName,
       settings.inboxName,
-      photoTemplate(caption, lastPhoto.file_id, photoUrl))) {
+      text)) {
       ctx.reply("Failed to write this to Logseq");
     }
   }
@@ -175,15 +185,22 @@ function photoHandlerGenerator(bot: Telegraf<Context>) {
       return;
     }
 
+    const block = await logseq.Editor.getBlock(payload.uuid);
+    if (!block) {
+      log(`fail to get block(${payload.uuid})`);
+      return;
+    }
+
     const photoUrl = await bot.telegram.getFileLink(photoId);
+    const content = block.content.replace(
+                      SHOW_PHOTO_RENDERER_REGEX,
+                      photoTemplate(caption, photoId, photoUrl));
 
     // replace the whole block with new renderer and img
     // renderer runs once at one time, so no loop
     // invalid renderer removes itself from rendering
     // photo url from Telegram is not permanent, need to fetch everytime
-    logseq.Editor.updateBlock(
-      payload.uuid,
-      photoTemplate(caption, photoId, photoUrl));
+    logseq.Editor.updateBlock(payload.uuid, content);
   });
 
   return {
