@@ -1,4 +1,4 @@
-import { BlockEntity, IUserOffHook, PageEntity } from "@logseq/libs/dist/LSPlugin.user";
+import { IUserOffHook } from "@logseq/libs/dist/LSPlugin.user";
 
 import { Telegraf, Context } from "telegraf";
 import { Message } from "typegram";
@@ -6,35 +6,13 @@ import stringArgv from "string-argv";
 import minimist from "minimist";
 import { marked } from "marked";
 
-// json-view doesn't have types
-// @ts-ignore
-import jsonview from '@pgrabovets/json-view';
-import "@pgrabovets/json-view/src/jsonview.scss"
-
 import { settings } from "./settings";
-import { runFunction, runScript, isMessageAuthorized, log, error } from "./utils";
+import { Command, parseCommand, runCommand, commandTypes, COMMAND_PAGE_NAME, QUERY_COMMAND, RUN_COMMAND, DEBUG_CMD_RENDERER } from "./command-utils";
+import { isMessageAuthorized, log, error } from "./utils";
 
 export { setupCommandHandlers, enableCustomizedCommands, disableCustomizedCommands };
 
 type CommandHandler = (ctx: Context) => Promise<void>;
-
-class Command {
-  public type: string = "";
-  public name: string = "";
-  public params: string[] = [];
-  public script: string = "";
-  public description: string = "";
-}
-
-const COMMAND_PAGE_NAME = "local-telegram-bot";
-const QUERY_COMMAND = "query";
-const RUN_COMMAND = "run";
-const DEBUG_CMD_RENDERER = "{{renderer :local_telegram_bot-debugCmd}}";
-
-const commandTypes: { [ key: string ]: string } = {
-  [`[[${COMMAND_PAGE_NAME}/${QUERY_COMMAND}]]`]: `${QUERY_COMMAND}`,
-  [`[[${COMMAND_PAGE_NAME}/${RUN_COMMAND}]]`]: `${RUN_COMMAND}`,
-};
 
 const commandHandlers: { type: string, description: string, handler: CommandHandler }[] = [
   runHandlerGenerator(),
@@ -43,58 +21,6 @@ const commandHandlers: { type: string, description: string, handler: CommandHand
 ];
 
 const commands = new Map<string, { [key: string]: Command }>;
-
-function parseCommand(content: string): Command | null {
-  let prefix = "";
-  for (let key in commandTypes) {
-    if (content.startsWith(key)) {
-      prefix = key;
-      break;
-    }
-  }
-
-  if (!prefix) {
-    log(`content is not valid: ${content}`);
-    return null;
-  }
-
-  const parts = content.substring(prefix.length).split("```");
-  if (parts.length < 2) {
-    log(`content is not valid: ${content}`);
-    return null;
-  }
-
-  const command = new Command();
-  command.type = commandTypes[prefix];
-
-  let signature = parts[0].trim();
-  if (signature.endsWith(DEBUG_CMD_RENDERER)) {
-    signature = signature.substring(0, signature.length - DEBUG_CMD_RENDERER.length).trim();
-  }
-
-  const names = signature.split(" ");
-  command.name = names[0];
-  command.params = names.slice(1);
-
-  command.script = parts[1].substring(parts[1].indexOf("\n"));
-  command.description = parts.length == 3 ? parts[2].trim() : "";
-
-  return command;
-}
-
-async function runCommand(command: Command, argv: string[]) {
-  switch (command.type) {
-    case "query":
-      return await runScript(command.script, argv);
-
-    case "run":
-      return await runFunction(command.script, argv, command.params);
-
-    default:
-      error(`invalid command type: ${command.type}`);
-      return null;
-  }
-}
 
 async function updateCommands() {
   // FIXME: no need to clear everytime
@@ -248,137 +174,6 @@ function setupSlashCommands() {
   });
 }
 
-function createDebugResultView(result: any, logs: any[]) {
-  const logsDiv = document.createElement("div") as HTMLDivElement;
-  logsDiv.className = "debugCmd-logs";
-  const logsView = jsonview.create(logs);
-  jsonview.render(logsView, logsDiv);
-
-  // json-view assume string as json in string, instead of simple string
-  // https://github.com/pgrabovets/json-view/blob/f37382acb982ffd5e43c4df335b3eaa45f8f2c48/src/json-view.js#L187
-  if (typeof result === "string" && !result.startsWith("\"") && !result.endsWith("\"")) {
-    result = `"${result}"`;
-  }
-  const resultView = jsonview.create(result);
-  const resultDiv = document.createElement("div") as HTMLDivElement;
-  resultDiv.className = "debugCmd-result";
-
-  const closeDebug = (e: Event) => {
-    const target = e.target as HTMLElement;
-
-    // close resultDiv when outside is clicked
-    if (target.closest(".debugCmd-result") === null && resultDiv.parentElement == document.body) {
-      logseq.toggleMainUI();
-      document.body.removeChild(resultDiv);
-      jsonview.destroy(resultView);
-      jsonview.destroy(logsView);
-      document.removeEventListener("click", closeDebug);
-    }
-  };
-  document.addEventListener("click", closeDebug);
-  logseq.showMainUI();
-  jsonview.render(resultView, resultDiv);
-  resultDiv.appendChild(logsDiv);
-
-  document.body.appendChild(resultDiv);
-}
-
-function setupDebug() {
-  logseq.provideStyle(`
-    .debugCmd {
-      background-color: orange;
-      display: inline-table;
-      cursor: pointer;
-    }
-    .debugCmd-try {
-      color: green;
-      margin: 0 5px 0;
-    }
-    .debugCmd-param {
-      width: 60px;
-      padding: 0 2px 0;
-      margin: 2px;
-    }
-    `);
-
-  logseq.provideModel({
-    async debugCmd_try(e: any) {
-      const { blockid } = e.dataset;
-      const block = await logseq.Editor.getBlock(blockid);
-      if (!block) {
-        return;
-      }
-
-      const cmd = parseCommand(block.content);
-      if (!cmd) {
-        log(`invalid command content: ${block.content}`);
-        return;
-      }
-
-      const argv: string[] = [];
-      for (let i = 0; i < cmd.params.length; i++) {
-        const input = top!.document.querySelector(`#param${i}-${blockid}`) as HTMLInputElement;
-        argv.push(input.value);
-      }
-
-      let result: any = null;
-      let logs: any[] = [];
-      
-      try {
-        const commandResult = await runCommand(cmd, argv);
-        if (commandResult == null) {
-          logs.push("unknow error");
-        } else {
-          result = commandResult.result;
-          logs = commandResult.logs;
-        }
-      } catch (e) {
-        logs.push(e);
-      }
-
-      createDebugResultView(result, logs);
-    },
-    debugCmd_input(e: any) {
-      console.log("debugCmd_input", e);
-    }
-  });
-
-  logseq.App.onMacroRendererSlotted(async ({ slot, payload }) => {
-    let [type] = payload.arguments;
-    if (type !== ':local_telegram_bot-debugCmd') {
-      return;
-    }
-
-    const block = await logseq.Editor.getBlock(payload.uuid);
-    if (!block) {
-      log(`invalid command block: ${slot}: ${payload.uuid}`);
-      return;
-    }
-
-    const cmd = parseCommand(block.content);
-    if (!cmd) {
-      log(`invalid command content: ${block.content}`);
-      return;
-    }
-
-    logseq.provideUI({
-      key: payload.uuid,
-      slot,
-      template: `
-      <div class="debugCmd">
-        <span class="debugCmd-try"
-              data-blockid="${payload.uuid}"
-              data-on-click="debugCmd_try">▶️</span>
-        <input data-blockid="${payload.uuid}"
-               class="debugCmd-param"
-               placeholder="${cmd.params.join(" ")}"
-               data-on-input="debugCmd_input" />
-      </div>
-     `,
-    });
-  });
-}
-
 function setupCommandMiddleware(bot: Telegraf<Context>) {
   bot.use((ctx, next) => {
     if (!ctx.message?.text) {
@@ -436,7 +231,6 @@ function setupCommandHandlers(bot: Telegraf<Context>) {
 
   setupCommandMiddleware(bot);
   setupSlashCommands();
-  setupDebug();
 }
 
 function enableCustomizedCommands() {

@@ -9,8 +9,9 @@ import { marked } from "marked";
 import { log, error, showError, getDateString, nameof } from "./utils";
 import { runAtInterval, cancelJob } from "./timed-job";
 import { settings, initializeSettings, Settings } from "./settings";
-import { setupMessageHandlers } from "./message_handlers";
-import { disableCustomizedCommands, enableCustomizedCommands, setupCommandHandlers } from "./command_handlers";
+import { setupMessageHandlers } from "./message-handlers";
+import { disableCustomizedCommands, enableCustomizedCommands, setupCommandHandlers } from "./command-handlers";
+import { setupCommandPlayground } from "./command-playground";
 
 type OperationHandler = (bot: Telegraf<Context>, blockId: string) => Promise<void>;
 
@@ -177,6 +178,8 @@ function setupBot(bot: Telegraf<Context>) {
   // logseq operation
   setupBlockContextMenu(bot);
   setupSlashCommand(bot);
+
+  setupCommandPlayground();
 
   // setupMarked(bot);
 }
