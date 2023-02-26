@@ -119,6 +119,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@codemirror/theme-one-dark@npm:^6.1.1":
+  version: 6.1.1
+  resolution: "@codemirror/theme-one-dark@npm:6.1.1"
+  dependencies:
+    "@codemirror/language": ^6.0.0
+    "@codemirror/state": ^6.0.0
+    "@codemirror/view": ^6.0.0
+    "@lezer/highlight": ^1.0.0
+  checksum: e314033c77732deb6eddb44d5e43d134842dd4e174f0525161f90edb0fd4fa93e482710b7371e3ed573645b8e0c402d518d5cdae41867546cd7e2ccee8da455e
+  languageName: node
+  linkType: hard
+
 "@codemirror/view@npm:^6.0.0, @codemirror/view@npm:^6.6.0":
   version: 6.9.1
   resolution: "@codemirror/view@npm:6.9.1"
@@ -2746,6 +2758,7 @@ __metadata:
   resolution: "logseq-local-telegram-bot@workspace:."
   dependencies:
     "@codemirror/lang-javascript": ^6.1.4
+    "@codemirror/theme-one-dark": ^6.1.1
     "@logseq/libs": ^0.0.14
     "@nextjournal/lang-clojure": ^1.0.0
     "@parcel/transformer-sass": 2.8.3

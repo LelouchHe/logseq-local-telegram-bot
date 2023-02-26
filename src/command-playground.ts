@@ -7,6 +7,7 @@ import { EditorView, keymap } from "@codemirror/view"
 import { indentWithTab } from "@codemirror/commands"
 import { javascript } from "@codemirror/lang-javascript";
 import { clojure } from "@nextjournal/lang-clojure";
+import { oneDark, color } from "@codemirror/theme-one-dark";
 
 // json-view doesn't have types
 // @ts-ignore
@@ -49,6 +50,7 @@ function showPlayground(blockId: string, command: Command) {
   argsInput.value = "";
   argsInput.placeholder = command.params.join(" ");
   codeContent.innerHTML = "";
+  codeContent.style.backgroundColor = color.background;
   resultContent.innerHTML = "";
   logsContent.innerHTML = "";
 
@@ -56,7 +58,7 @@ function showPlayground(blockId: string, command: Command) {
 
   const codeView = new EditorView({
     doc: command.script,
-    extensions: [basicSetup, keymap.of([indentWithTab]), languageSupport],
+    extensions: [basicSetup, oneDark, keymap.of([indentWithTab]), languageSupport],
     parent: codeContent
   });
 

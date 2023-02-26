@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@codemirror/lang-javascript": "^6.1.4",
+    "@codemirror/theme-one-dark": "^6.1.1",
     "@logseq/libs": "^0.0.14",
     "@nextjournal/lang-clojure": "^1.0.0",
     "@pgrabovets/json-view": "^2.7.1",
