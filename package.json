@@ -43,6 +43,6 @@
     "main": "dist/index.html",
     "id": "logseq-local-telegram-bot",
     "title": "Local Telegram Bot",
-    "icon": "./assets/icon.png"
+    "icon": "./icon.png"
   }
 }
