@@ -2,7 +2,9 @@ import "@logseq/libs";
 
 import stringArgv from "string-argv";
 import minimist from "minimist";
-import { EditorView, basicSetup } from "codemirror";
+import { basicSetup } from "codemirror";
+import { EditorView, keymap } from "@codemirror/view"
+import { indentWithTab } from "@codemirror/commands"
 import { javascript } from "@codemirror/lang-javascript";
 import { clojure } from "@nextjournal/lang-clojure";
 
@@ -54,7 +56,7 @@ function showPlayground(blockId: string, command: Command) {
 
   const codeView = new EditorView({
     doc: command.script,
-    extensions: [basicSetup, languageSupport],
+    extensions: [basicSetup, keymap.of([indentWithTab]), languageSupport],
     parent: codeContent
   });
 
