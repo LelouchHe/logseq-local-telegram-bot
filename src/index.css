@@ -64,6 +64,7 @@ body {
   margin: 10px;
   display: flex;
   justify-content: center;
+  position: relative;
 }
 
 #playground .code {
@@ -71,11 +72,11 @@ body {
 }
 
 #playground .result {
-  height: 30%;
+  height: 25%;
 }
 
 #playground .logs {
-  height: 10%;
+  height: 16%;
 }
 
 #playground .content {
@@ -85,23 +86,15 @@ body {
   white-space: nowrap;
 }
 
-.debugCmd-result {
+#playground .content::after {
+  color: #000;
+  content: attr(data-bg-text);
+  display: block;
+  font-size: 40px;
+  line-height: 1;
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  height: 60%;
-  width: 80%;
-  background-color: white;
-  white-space: nowrap;
-}
-
-.debugCmd-result>.json-container {
-  height: 60%;
-  overflow: auto;
-}
-
-.debugCmd-logs {
-  height: 40%;
-  overflow: auto;
+  bottom: 0;
+  right: 15px;
+  color: lightgray;
+  opacity: 0.7;
 }
