@@ -36,7 +36,7 @@ Currently, it's still under heavy development.
     * Query is for datascript, which looks like advanced query in Logseq, but it only includes query part and optional input, like below
         * ![query](./assets/query.PNG)
         * It returns in JSON
-    * Run is for js, which could uses all DOM and Logseq plugin apis. It looks like below
+    * Run is for js, which could uses normal js/DOM and Logseq plugin apis. It looks like below
         * ![query](./assets/run.PNG)
         * It has access to `logseq` plugin api, and `await` could be used inside, as shown in the example
         * It returns in JSON

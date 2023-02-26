@@ -31,6 +31,7 @@ async function runFunction(body: string, argv: any[], params: string[] = []) {
   const wrap = `{ return async ${func}; };`;
 
   const iframe = document.createElement('iframe');
+  iframe.style.display = "none";
   // try best to sandbox
   iframe.sandbox.value = "allow-same-origin allow-scripts";
   document.body.appendChild(iframe);
