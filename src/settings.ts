@@ -76,6 +76,10 @@ class Settings {
     return logseq.settings!.appendAtBottom;
   }
 
+  public get addTimestamp(): boolean {
+    return logseq.settings!.addTimestamp;
+  }
+
   public get scheduledNotificationTime() {
     if (this.isMainBot && logseq.settings!.scheduledNotificationTime) {
       return new Date(logseq.settings!.scheduledNotificationTime);
@@ -167,6 +171,13 @@ const settingsSchema: SettingSchemaDesc[] = [
     type: "boolean",
     default: false,
     title: "Append At Bottom",
+  },
+  {
+    key: "addTimestamp",
+    description: "If it's set to true, message received time in format HH:mm will be added to the front of message text",
+    type: "boolean",
+    default: false,
+    title: "Add Timestamp",
   },
   {
     key: "scheduledNotificationTime",

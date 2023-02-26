@@ -4,7 +4,7 @@ import { Telegraf, Context } from "telegraf";
 import { MessageSubTypes } from "telegraf/typings/telegram-types";
 import { Message, MessageEntity } from "typegram";
 
-import { log, getDateString, isMessageAuthorized } from "./utils";
+import { log, getDateString, getTimestampString, isMessageAuthorized } from "./utils";
 import { settings, JOURNAL_PAGE_NAME } from "./settings";
 
 export { setupMessageHandlers };
@@ -123,6 +123,13 @@ function textHandlerGenerator() {
       }
 
       text = subs.join("");
+    }
+
+    if (settings.addTimestamp) {
+      const receiveDate = new Date();
+      receiveDate.setTime(message.date * 1000);
+
+      text = `${getTimestampString(receiveDate)} - ${text}`; 
     }
 
     if (!await writeBlock(

@@ -4,7 +4,7 @@ import { Message } from "typegram";
 
 import { settings } from "./settings";
 
-export { log, error, showMsg, showError, getDateString, isMessageAuthorized, nameof };
+export { log, error, showMsg, showError, getDateString, getTimestampString, isMessageAuthorized, nameof };
 
 const PROJECT_NAME = "Local Telegram Bot";
 
@@ -39,9 +39,18 @@ function getDateString(date: Date) {
     day: `${date.getDate()}`.padStart(2, "0"),
     month: `${date.getMonth() + 1}`.padStart(2, "0"),
     year: date.getFullYear()
-  }
+  };
 
   return `${d.year}${d.month}${d.day}`;
+}
+
+function getTimestampString(date: Date) {
+  const t = {
+    hour: `${date.getHours()}`.padStart(2, "0"),
+    minute: `${date.getMinutes()}`.padStart(2, "0")
+  };
+
+  return `${t.hour}:${t.minute}`;
 }
 
 function isMessageAuthorized(message: Message.ServiceMessage): boolean {
