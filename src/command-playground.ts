@@ -50,7 +50,7 @@ function createDebugResultView(result: any, logs: any[]) {
 
 function setupCommandPlayground() {
   logseq.provideStyle(`
-    .cmdpg-open {
+    .command-playground-open {
       color: green;
       margin: 0 5px 0;
       cursor: pointer;
@@ -58,7 +58,7 @@ function setupCommandPlayground() {
     `);
 
   logseq.provideModel({
-    async debugCmd_try(e: any) {
+    async cmdpg_open(e: any) {
       const { blockid } = e.dataset;
       const block = await logseq.Editor.getBlock(blockid);
       if (!block) {
@@ -75,6 +75,10 @@ function setupCommandPlayground() {
     }
   });
 
+  document.querySelector("#playground .close")?.addEventListener("click", () => {
+    logseq.hideMainUI();
+  });
+
   logseq.App.onMacroRendererSlotted(async ({ slot, payload }) => {
     let [type] = payload.arguments;
     if (type !== ':local_telegram_bot-debugCmd') {
@@ -85,9 +89,9 @@ function setupCommandPlayground() {
       key: payload.uuid,
       slot,
       template: `
-        <span class="cmdpg-open"
+        <span class="command-playground-open"
               data-blockid="${payload.uuid}"
-              data-on-click="debugCmd_try">▶️</span>
+              data-on-click="cmdpg_open">▶</span>
         `,
     });
   });

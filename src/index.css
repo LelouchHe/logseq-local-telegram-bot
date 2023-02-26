@@ -1,31 +1,102 @@
-html, body {
-    margin: 0;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
+html,
+body {
+  margin: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
 }
 
 body {
-    position: fixed;
+  position: fixed;
+}
+
+#playground {
+  width: 90vw;
+  height: 90vh;
+  top: 5vh;
+  left: 5vw;
+  background-color: gray;
+  position: relative;
+}
+
+#playground .close {
+  position: absolute;
+  right: 5px;
+  cursor: pointer;
+}
+
+#playground .info {
+  padding: 10px 10px 5px;
+  font-size: 20px;
+}
+
+#playground .signature {
+  margin: 0 10px 0;
+  width: 75%;
+  font-size: 20px;
+}
+
+#playground .input {
+  padding: 0 10px 0 64px;
+  font-size: 20px;
+}
+
+#playground .debug {
+  color: green;
+  margin: 5px;
+  cursor: pointer;
+}
+
+#playground .args {
+  margin: 0 10px 0;
+  width: 75%;
+  font-size: 20px;
+}
+
+#playground .code,
+#playground .result,
+#playground .logs {
+  margin: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+#playground .code {
+  height: 40%;
+}
+
+#playground .result {
+  height: 30%;
+}
+
+#playground .logs {
+  height: 10%;
+}
+
+#playground .content {
+  width: 100%;
+  background-color: white;
+  overflow: auto;
+  white-space: nowrap;
 }
 
 .debugCmd-result {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    height: 60%;
-    width: 80%;
-    background-color: white;
-    white-space: nowrap;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  height: 60%;
+  width: 80%;
+  background-color: white;
+  white-space: nowrap;
 }
 
-.debugCmd-result > .json-container {
-    height: 60%;
-    overflow: auto;
+.debugCmd-result>.json-container {
+  height: 60%;
+  overflow: auto;
 }
 
 .debugCmd-logs {
-    height: 40%;
-    overflow: auto;
+  height: 40%;
+  overflow: auto;
 }

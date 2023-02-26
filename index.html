@@ -10,17 +10,27 @@
 </head>
 
 <body>
-  <div id="app"></div>
   <script src="./src/index.ts" type="module"></script>
   <link rel="stylesheet" href="./src/index.css" />
   <div id="playground">
-    <label class="label">Signature: </label>
-    <input class="signature" />
-    <span class="run">▶️</span>
-    <input class="args" />
-    <div class="code"></div>
-    <div class="result"></div>
-    <div class="logs"></div>
+    <span class="close">✖</span>
+    <div class="info">
+      <label class="signature_title">Signature: </label>
+      <input class="signature" />
+    </div>
+    <div class="input">
+      <span class="debug">▶</span>
+      <input class="args" />
+    </div>
+    <div class="code">
+      <div class="content"></div>
+    </div>
+    <div class="result">
+      <div class="content"></div>
+    </div>
+    <div class="logs">
+      <div class="content"></div>
+    </div>
   </div>
 </body>
 
