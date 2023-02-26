@@ -32,7 +32,7 @@ async function runFunction(body: string, argv: any[], params: string[] = []) {
 
   const iframe = document.createElement('iframe');
   // try best to sandbox
-  iframe.sandbox.value = "allow-same-origin";
+  iframe.sandbox.value = "allow-same-origin allow-scripts";
   document.body.appendChild(iframe);
 
   // pass logseq to iframe

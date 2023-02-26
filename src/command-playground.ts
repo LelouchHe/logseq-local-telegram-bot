@@ -68,6 +68,7 @@ function showPlayground(blockId: string, command: Command) {
 
     const args = argsInput.value;
     const argv = minimist(stringArgv(args))._;
+    command.script = codeView.state.doc.toJSON().join("\n");
 
     let result: any = null;
     let logs: any[] = [];

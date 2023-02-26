@@ -67,6 +67,10 @@ body {
   position: relative;
 }
 
+#playground .cm-editor {
+  height: 100%;
+}
+
 @media screen and (max-width: 800px) {
   #playground .code {
     height: 40%;
