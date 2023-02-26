@@ -170,7 +170,7 @@ function setupSlashCommands() {
   });
 
   logseq.Editor.registerSlashCommand("Local Telegram Bot: Define Customized Run", async (e) => {
-    logseq.Editor.updateBlock(e.uuid, slashTemplate(RUN_COMMAND, "ts"));
+    logseq.Editor.updateBlock(e.uuid, slashTemplate(RUN_COMMAND, "js"));
   });
 }
 

@@ -34,27 +34,18 @@ Currently, it's still under heavy development.
 * Command playgroud is available to debug eligible js/datascript within Logseq.
     * There are 2 slash commands `Local Telegram Bot: Define Customized Query` and `Local Telegram Bot: Define Customized Run` to generate template for query/run, with extra debug button to open playground.
     * Query is for datascript, which looks like advanced query in Logseq, but it only includes query part and optional input, like below
-        * [[local-telegram-bot/query]] query_name query_input0 query_input1
-        ```clojure
-            [:find (pull ?b [*])
-            :in $ ?query_input0 ?query_input1
-            :where
-            [?b :block/marker ?marker]
-            [(= ?target ?marker)]]
-        ```
-        This is the description of query to show in help command
+        * ![query](./assets/query.PNG)
         * It returns in JSON
     * Run is for js, which could uses all DOM and Logseq plugin apis. It looks like below
-        * [[local-telegram-bot/run]] run_name param0 param1
-        ```js
-        let param = param0 + param1;
-        await logseq.UI.showMsg(param);
-        return param;
-        ```
-        This is also the description of run to show in help command
+        * ![query](./assets/run.PNG)
         * It has access to `logseq` plugin api, and `await` could be used inside, as shown in the example
         * It returns in JSON
-    * Clicking the green arrow opens the playground.
+    * Clicking the green arrow opens the playground, where users can debug their datascript or js to make sure it works.
+        * ![playground](./assets/playground.PNG)
+        * "Signature" is for the selected command. It's readonly, and can be changed out of playground
+        * "param0 param1" is the placeholder for actual arguments. no need to type `run_name` any more
+        * "Code" region is for normal datascript/js code, with limited highlight and auto-completion
+        * Clicking the green arrow will run the code. The result is shown in json in Result region, and exceptions, console logs and console errors are shown in Logs region.
 * Customized command system, which enable users to write datascript(query) or ts/js(run) and get response from Telegram by sending command
     * "Enable Customized Command" needs to be enabled. This feature is still experimenting. It might change when it's finalized.
     * Users need to send `/query query_name query_input0 query_input1` or just `/query_name query_input0 query_input1` to invoke above query
