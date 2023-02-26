@@ -4,6 +4,7 @@ import stringArgv from "string-argv";
 import minimist from "minimist";
 import { EditorView, basicSetup } from "codemirror";
 import { javascript } from "@codemirror/lang-javascript";
+import { clojure } from "@nextjournal/lang-clojure";
 
 // json-view doesn't have types
 // @ts-ignore
@@ -49,9 +50,11 @@ function showPlayground(blockId: string, command: Command) {
   resultContent.innerHTML = "";
   logsContent.innerHTML = "";
 
+  const languageSupport = command.type == "run" ? javascript() : clojure();
+
   const codeView = new EditorView({
     doc: command.script,
-    extensions: [basicSetup, javascript()],
+    extensions: [basicSetup, languageSupport],
     parent: codeContent
   });
 

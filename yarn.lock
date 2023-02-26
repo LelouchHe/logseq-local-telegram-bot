@@ -351,6 +351,25 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@nextjournal/lang-clojure@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "@nextjournal/lang-clojure@npm:1.0.0"
+  dependencies:
+    "@codemirror/language": ^6.0.0
+    "@nextjournal/lezer-clojure": 1.0.0
+  checksum: 7ab25b0d34a28d68cde3561d1b2c4e45f06fffec45e31d9476a4d624f272adddbcf3562e93a549dc4ab156363eb0b78cfd2c5ae1cf82f35a8f48855f299955d8
+  languageName: node
+  linkType: hard
+
+"@nextjournal/lezer-clojure@npm:1.0.0":
+  version: 1.0.0
+  resolution: "@nextjournal/lezer-clojure@npm:1.0.0"
+  dependencies:
+    "@lezer/lr": ^1.0.0
+  checksum: 77b70ffa7a4ab0210e4034f1697abb9740177a3c3261164348f2f4a0c0ece15d323a5dd7b02d65747cacea80c21cbbb2b9923ae3f3155879b1232ac8792d3896
+  languageName: node
+  linkType: hard
+
 "@npmcli/fs@npm:^2.1.0":
   version: 2.1.2
   resolution: "@npmcli/fs@npm:2.1.2"
@@ -2728,6 +2747,7 @@ __metadata:
   dependencies:
     "@codemirror/lang-javascript": ^6.1.4
     "@logseq/libs": ^0.0.14
+    "@nextjournal/lang-clojure": ^1.0.0
     "@parcel/transformer-sass": 2.8.3
     "@pgrabovets/json-view": ^2.7.1
     "@types/codemirror": ^5.60.7
