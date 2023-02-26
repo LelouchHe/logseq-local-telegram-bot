@@ -56,6 +56,18 @@ function setupCommandPlayground() {
       cursor: pointer;
     }
     `);
+  
+  const closeButton = document.querySelector("#playground .close") as HTMLElement;
+  const blockSpan = document.querySelector("#playground .block") as HTMLSpanElement;
+  const signatureInput = document.querySelector("#playground .signature") as HTMLInputElement;
+  const argsInput = document.querySelector("#playground .args") as HTMLInputElement;
+  const codeContent = document.querySelector("#playground .code .content pre code") as HTMLElement;
+  const resultContent = document.querySelector("#playground .result .content") as HTMLDivElement;
+  const logsContent = document.querySelector("#playground .logs .content") as HTMLDivElement;
+
+  closeButton.addEventListener("click", () => {
+    logseq.hideMainUI();
+  });
 
   logseq.provideModel({
     async cmdpg_open(e: any) {
@@ -73,10 +85,6 @@ function setupCommandPlayground() {
 
       logseq.showMainUI();
     }
-  });
-
-  document.querySelector("#playground .close")?.addEventListener("click", () => {
-    logseq.hideMainUI();
   });
 
   logseq.App.onMacroRendererSlotted(async ({ slot, payload }) => {

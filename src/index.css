@@ -30,6 +30,10 @@ body {
   font-size: 20px;
 }
 
+#playground .block {
+  display: none;
+}
+
 #playground .signature {
   margin: 0 10px 0;
   width: 75%;
@@ -37,7 +41,7 @@ body {
 }
 
 #playground .input {
-  padding: 0 10px 0 64px;
+  padding: 0 10px;
   font-size: 20px;
 }
 
@@ -45,6 +49,7 @@ body {
   color: green;
   margin: 5px;
   cursor: pointer;
+  margin-left: 60px;
 }
 
 #playground .args {
