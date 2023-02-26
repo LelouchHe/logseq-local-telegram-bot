@@ -31,9 +31,8 @@ Currently, it's still under heavy development.
     * Users can set the time to send each of the notifications in the settings, or disable this feature by clearing it.
     * If it's set to a future date, the notification will wait until that date comes, regardless of the time. 
     * It now works only with scheduled/deadline.
-* Customized command system, which enable users to write datascript(query) or ts/js(run) and get response from Telegram by sending command
-    * "Enable Customized Command" needs to be enabled. This feature is still experimenting. It might change when it's finalized.
-    * There are 2 slash commands `Local Telegram Bot: Define Customized Query` and `Local Telegram Bot: Define Customized Run` to generate template for query/run, with extra debug button to play with
+* Command playgroud is available to debug eligible js/datascript within Logseq.
+    * There are 2 slash commands `Local Telegram Bot: Define Customized Query` and `Local Telegram Bot: Define Customized Run` to generate template for query/run, with extra debug button to open playground.
     * Query is for datascript, which looks like advanced query in Logseq, but it only includes query part and optional input, like below
         * [[local-telegram-bot/query]] query_name query_input0 query_input1
         ```clojure
@@ -44,20 +43,24 @@ Currently, it's still under heavy development.
             [(= ?target ?marker)]]
         ```
         This is the description of query to show in help command
-        * Users need to send `/query query_name query_input0 query_input1` to invoke above query
         * It returns in JSON
-    * Run is for ts/js, which could uses all DOM and Logseq plugin apis. It looks like below
+    * Run is for js, which could uses all DOM and Logseq plugin apis. It looks like below
         * [[local-telegram-bot/run]] run_name param0 param1
-        ```ts
+        ```js
         let param = param0 + param1;
-        logseq.UI.showMsg(param);
+        await logseq.UI.showMsg(param);
         return param;
         ```
         This is also the description of run to show in help command
-        * Users need to send `/run run_name param0 param1` to invoke above run
+        * It has access to `logseq` plugin api, and `await` could be used inside, as shown in the example
         * It returns in JSON
+    * Clicking the green arrow opens the playground.
+* Customized command system, which enable users to write datascript(query) or ts/js(run) and get response from Telegram by sending command
+    * "Enable Customized Command" needs to be enabled. This feature is still experimenting. It might change when it's finalized.
+    * Users need to send `/query query_name query_input0 query_input1` or just `/query_name query_input0 query_input1` to invoke above query
+    * Users need to send `/run run_name param0 param1` or just `/run_name param0 param1` to invoke above run
     * There is a `/help` command, to list all available commands with their signature and description
-    * When "Enable Customized Command From Message" is also enabled, users are able to add new commands from Telegram directly, as long as its format is correct
+    * When "Enable Customized Command From Message" is also enabled, users are able to add new commands from Telegram directly, as long as its format is 
 
 ## Future features
 
@@ -72,8 +75,9 @@ Currently, it's still under heavy development.
 * Send to specific users, including those un-authorized users
 * More time control over TODO notification
 * Use Agenda-plugin-style date, instead of builtin date 
-* Update task statsu from Telegram
+* Update task status from Telegram
 * Add more builtin commands
+* Add auto-complete for datascript and Logseq data schema
 
 ## Contribute
 
