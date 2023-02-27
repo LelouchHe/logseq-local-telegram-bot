@@ -14,10 +14,13 @@ import { oneDark, color } from "@codemirror/theme-one-dark";
 import jsonview from '@pgrabovets/json-view';
 import "@pgrabovets/json-view/src/jsonview.scss"
 
-import { Command, parseCommand, runCommand, stringifyCommand } from "./command-utils";
+import { Command, parseCommand, runCommand, stringifyCommand, commandInfos } from "./command-utils";
 import { log } from "./utils";
 
-export { setupCommandPlayground };
+export { setupCommandPlayground, OPEN_PLAYGROUND_RENDERER };
+
+const OPEN_PLAYGROUND_NAME = ":local_telegram_bot-openPlayground";
+const OPEN_PLAYGROUND_RENDERER = `{{renderer ${OPEN_PLAYGROUND_NAME}}}`;
 
 function showResult(result: any, logs: any[]) {
   const resultContent = document.querySelector("#playground .result .content") as HTMLDivElement;
@@ -54,7 +57,14 @@ function showPlayground(blockId: string, command: Command) {
   resultContent.innerHTML = "";
   logsContent.innerHTML = "";
 
-  const languageSupport = command.type == "run" ? javascript() : clojure();
+  let language = "";
+  for (let info of commandInfos) {
+    if (command.type == info.type) {
+      language = info.language;
+    }
+  }
+
+  const languageSupport = language == "js" ? javascript() : clojure();
 
   const codeView = new EditorView({
     doc: command.script,
@@ -131,7 +141,7 @@ function setupCommandPlayground() {
 
   logseq.App.onMacroRendererSlotted(async ({ slot, payload }) => {
     let [type] = payload.arguments;
-    if (type !== ':local_telegram_bot-debugCmd') {
+    if (type !== OPEN_PLAYGROUND_NAME) {
       return;
     }
 

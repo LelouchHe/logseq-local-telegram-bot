@@ -1,9 +1,10 @@
 import "@logseq/libs";
 import { LSPluginUser } from "@logseq/libs/dist/LSPlugin.user";
 
+import { OPEN_PLAYGROUND_RENDERER } from "./command-playground";
 import { log, error } from "./utils";
 
-export { Command, parseCommand, runCommand, stringifyCommand, commandInfos, COMMAND_PAGE_NAME, DEBUG_CMD_RENDERER };
+export { Command, parseCommand, runCommand, stringifyCommand, setupSlashCommands, commandInfos, COMMAND_PAGE_NAME };
 
 class Command {
   public type: string = "";
@@ -38,7 +39,6 @@ class CommandInfo {
 const COMMAND_PAGE_NAME = "local-telegram-bot";
 const QUERY_COMMAND = "query";
 const RUN_COMMAND = "run";
-const DEBUG_CMD_RENDERER = "{{renderer :local_telegram_bot-debugCmd}}";
 
 const commandInfos: CommandInfo[] = [
   new CommandInfo(
@@ -52,6 +52,22 @@ const commandInfos: CommandInfo[] = [
     "Run customized js",
     "Local Telegram Bot: Define Customized Query")
 ];
+
+function slashTemplate(name: string, language: string) {
+  let template = `[[${COMMAND_PAGE_NAME}/${name}]] name param0 param1 ${OPEN_PLAYGROUND_RENDERER}\n`;
+  template += `\`\`\`${language}\n\`\`\`\n`;
+  template += "description";
+  return template;
+}
+
+function setupSlashCommands() {
+  // FIXME: unable to un-register?
+  for (let info of commandInfos) {
+    logseq.Editor.registerSlashCommand(info.slashCommand, async (e) => {
+      logseq.Editor.updateBlock(e.uuid, slashTemplate(info.type, info.language));
+    });
+  }
+}
 
 // FIXME: not that sandboxed
 // function needs to be run here, not outside iframe
@@ -115,8 +131,8 @@ function parseCommand(content: string): Command | null {
   command.type = commandInfo.type;
 
   let signature = parts[0].trim();
-  if (signature.endsWith(DEBUG_CMD_RENDERER)) {
-    signature = signature.substring(0, signature.length - DEBUG_CMD_RENDERER.length).trim();
+  if (signature.endsWith(OPEN_PLAYGROUND_RENDERER)) {
+    signature = signature.substring(0, signature.length - OPEN_PLAYGROUND_RENDERER.length).trim();
   }
 
   const names = signature.split(" ");
@@ -158,7 +174,7 @@ function stringifyCommand(command: Command): string {
   }
 
   const lines: string[] = [
-    `${commandInfo.pageName} ${command.name} ${command.params.join(" ")} ${DEBUG_CMD_RENDERER}\n`,
+    `${commandInfo.pageName} ${command.name} ${command.params.join(" ")} ${OPEN_PLAYGROUND_RENDERER}\n`,
     "```" + commandInfo.language + "\n" + command.script + "\n```\n",
     `${command.description}\n`
   ];

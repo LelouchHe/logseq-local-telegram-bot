@@ -7,7 +7,7 @@ import minimist from "minimist";
 import { marked } from "marked";
 
 import { settings } from "./settings";
-import { Command, parseCommand, runCommand, commandInfos, COMMAND_PAGE_NAME, DEBUG_CMD_RENDERER } from "./command-utils";
+import { Command, parseCommand, runCommand, setupSlashCommands, commandInfos, COMMAND_PAGE_NAME } from "./command-utils";
 import { isMessageAuthorized, log, error } from "./utils";
 
 export { setupCommandHandlers, enableCustomizedCommands, disableCustomizedCommands };
@@ -26,7 +26,7 @@ const customizedCommandHandlers: CommandHandler[] = [];
 
 const commands = new Map<string, { [key: string]: Command }>;
 
-async function updateCommands() {
+async function updateCustomizedCommands() {
   // FIXME: no need to clear everytime
   commands.clear();
 
@@ -159,22 +159,6 @@ function helpHandlerGenerator() {
   }
 }
 
-function slashTemplate(name: string, language: string) {
-  let template = `[[${COMMAND_PAGE_NAME}/${name}]] name param0 param1 ${DEBUG_CMD_RENDERER}\n`;
-  template += `\`\`\`${language}\n\`\`\`\n`;
-  template += "description";
-  return template;
-}
-
-function setupSlashCommands() {
-  // FIXME: unable to un-register?
-  for (let info of commandInfos) {
-    logseq.Editor.registerSlashCommand(info.slashCommand, async (e) => {
-      logseq.Editor.updateBlock(e.uuid, slashTemplate(info.type, info.language));
-    });
-  }
-}
-
 function setupCommandMiddleware(bot: Telegraf<Context>) {
   bot.use((ctx, next) => {
     if (!ctx.message?.text) {
@@ -239,9 +223,9 @@ function setupCommandHandlers(bot: Telegraf<Context>) {
 function enableCustomizedCommands() {
   unsubscribe();
   unsubscribe = logseq.DB.onChanged((e) => {
-    updateCommands();
+    updateCustomizedCommands();
   });
-  updateCommands();
+  updateCustomizedCommands();
   log("customized commands are enabled");
 }
 
