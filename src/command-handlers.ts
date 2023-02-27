@@ -8,7 +8,7 @@ import { marked } from "marked";
 
 import { settings } from "./settings";
 import { Command, parseCommand, runCommand, setupSlashCommands, commandInfos, COMMAND_PAGE_NAME } from "./command-utils";
-import { isMessageAuthorized, log, error } from "./utils";
+import { isMessageAuthorized, log, error, stringifyBlocks } from "./utils";
 
 export { setupCommandHandlers, enableCustomizedCommands, disableCustomizedCommands };
 
@@ -19,6 +19,8 @@ interface CommandHandler {
 };
 
 const builtinCommandHandlers: CommandHandler[] = [
+  getHandlerGenerator(),
+  updateTaskHandlerGenerator(),
   helpHandlerGenerator()
 ];
 
@@ -127,11 +129,68 @@ function setupCustomizedCommandHandlers() {
   }
 }
 
+function getHandlerGenerator() {
+  const type = "get";
+  return {
+    type: type,
+    description: "uuid. Get block content from uuid",
+    handler: async (ctx: Context) => {
+      const text = ctx.message!.text;
+      const parts = text.split(" ");
+      if (parts.length < 2) {
+        ctx.reply("invalid command");
+        return;
+      }
+
+      const block = await logseq.Editor.getBlock(parts[1], { includeChildren: true });
+      if (!block) {
+        ctx.reply("Block is not available");
+        return;
+      }
+
+      const html = marked.parseInline(stringifyBlocks(block, true));
+      await ctx.reply(html, { parse_mode: "HTML" });
+    }
+  }
+}
+
+function updateTaskHandlerGenerator() {
+  const type = "updateTask";
+  return {
+    type: type,
+    description: "uuid status. Update task status",
+    handler: async (ctx: Context) => {
+      const text = ctx.message!.text;
+      const parts = text.split(" ");
+      if (parts.length < 3) {
+        ctx.reply("invalid command");
+        return;
+      }
+
+      const status = parts[2].toUpperCase();
+      if (!["TODO", "DOING", "DONE", "NOW", "LATER", "WAITING"].includes(status)) {
+        ctx.reply("invalid status");
+        return;
+      }
+
+      const block = await logseq.Editor.getBlock(parts[1]);
+      if (!block || !block["marker"]) {
+        ctx.reply("invalid task");
+        return;
+      }
+
+      const content = status + block.content.substring(block.content.indexOf(" "));
+      await logseq.Editor.updateBlock(block.uuid, content);
+      const html = marked.parseInline(content);
+      await ctx.reply(html, { parse_mode: "HTML" });
+    }
+  }
+}
+
 function helpHandlerGenerator() {
   return {
     type: "help",
     description: "List all available commands",
-    isCustomized: false,
     handler: async (ctx: Context) => {
       let msg = "Available commands:\n";
       for (let { type, description, handler } of builtinCommandHandlers) {

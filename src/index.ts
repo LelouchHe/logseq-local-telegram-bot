@@ -1,12 +1,12 @@
 import "@logseq/libs";
-import { PageEntity, BlockEntity, SettingSchemaDesc } from "@logseq/libs/dist/LSPlugin.user";
+import { PageEntity, BlockEntity } from "@logseq/libs/dist/LSPlugin.user";
 
 // 4.* has URL is not constructor error, fallback to 3.*
 import { Telegraf, Context  } from "telegraf";
 import { marked } from "marked";
 
 // internal
-import { log, error, showError, getDateString, nameof } from "./utils";
+import { log, error, showError, getDateString, nameof, stringifyBlocks } from "./utils";
 import { runAtInterval, cancelJob } from "./timed-job";
 import { settings, initializeSettings, Settings } from "./settings";
 import { setupMessageHandlers } from "./message-handlers";
@@ -24,7 +24,7 @@ const JOB_TYPES: { [ key: string ]: string } = {
 };
 
 const blockContextMenuHandlers: { [key: string]: OperationHandler } = {
-  "Send": handleSendOperation as OperationHandler
+  "Send": handleSendOperation
 };
 
 async function findTask(date: Date, type: string, status: string[]) {
@@ -46,23 +46,7 @@ async function findTask(date: Date, type: string, status: string[]) {
   return ret.flat();
 }
 
-function convertBlocksToText(root: BlockEntity, tab: string, indent: string): string {
-  if (!root) {
-    error("Block doesn't include content");
-    return "";
-  }
-
-  let text = indent + root.content + "\n";
-  if (root.children) {
-    for (let child of root.children) {
-      text += convertBlocksToText(child as BlockEntity, tab, indent + tab);
-    }
-  }
-
-  return text;
-}
-
-async function handleSendOperation(bot: Telegraf<Context>, blockId: string) {
+async function handleSendOperation(bot: Telegraf<Context>, blockId: string, addId: boolean = false) {
   if (Object.keys(settings.chatIds).length == 0) {
     showError("Authorized users need to \"/register\" first");
     return;
@@ -73,7 +57,7 @@ async function handleSendOperation(bot: Telegraf<Context>, blockId: string) {
     return;
   }
 
-  const text = convertBlocksToText(root, "\t\t", "");
+  const text = stringifyBlocks(root, false);
   const html = marked.parseInline(text);
   for (let key in settings.chatIds) {
     bot.telegram.sendMessage(settings.chatIds[key], html, { parse_mode: "HTML" });
@@ -98,7 +82,7 @@ function startTimedJob(bot: Telegraf<Context>, name: string, time: Date) {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tasks = await findTask(tomorrow, JOB_TYPES[name], ["TODO", "DOING", "NOW", "LATER", "WAITING"]);
     for (let task of tasks) {
-      handleSendOperation(bot, task.uuid);
+      handleSendOperation(bot, task.uuid, true);
     }
   });
 }
