@@ -82,7 +82,7 @@ function startTimedJob(bot: Telegraf<Context>, name: string, time: Date) {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tasks = await findTask(tomorrow, JOB_TYPES[name], ["TODO", "DOING", "NOW", "LATER", "WAITING"]);
     for (let task of tasks) {
-      handleSendOperation(bot, task.uuid, true);
+      handleSendOperation(bot, task.uuid);
     }
   });
 }
