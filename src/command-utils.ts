@@ -3,7 +3,7 @@ import { LSPluginUser } from "@logseq/libs/dist/LSPlugin.user";
 
 import { log, error } from "./utils";
 
-export { Command, parseCommand, runCommand, stringifyCommand, commandTypes, COMMAND_PAGE_NAME, QUERY_COMMAND, RUN_COMMAND, DEBUG_CMD_RENDERER };
+export { Command, parseCommand, runCommand, stringifyCommand, commandInfos, COMMAND_PAGE_NAME, DEBUG_CMD_RENDERER };
 
 class Command {
   public type: string = "";
@@ -13,16 +13,45 @@ class Command {
   public description: string = "";
 }
 
+class CommandInfo {
+  public type: string = "";
+  public language: string = "";
+  public description: string = "";
+  public slashCommand: string = "";
+
+  public constructor(
+    type: string,
+    language: string,
+    description: string,
+    slashCommand: string) {
+    this.type = type;
+    this.language = language;
+    this.description = description;
+    this.slashCommand = slashCommand;
+  }
+
+  public get pageName(): string {
+    return `[[${COMMAND_PAGE_NAME}/${this.type}]]`;
+  }
+}
+
 const COMMAND_PAGE_NAME = "local-telegram-bot";
 const QUERY_COMMAND = "query";
 const RUN_COMMAND = "run";
 const DEBUG_CMD_RENDERER = "{{renderer :local_telegram_bot-debugCmd}}";
 
-const commandTypes: { [key: string]: string } = {
-  [`[[${COMMAND_PAGE_NAME}/${QUERY_COMMAND}]]`]: `${QUERY_COMMAND}`,
-  [`[[${COMMAND_PAGE_NAME}/${RUN_COMMAND}]]`]: `${RUN_COMMAND}`,
-};
-
+const commandInfos: CommandInfo[] = [
+  new CommandInfo(
+    QUERY_COMMAND,
+    "clojure",
+    "Query customized datascript",
+    "Local Telegram Bot: Define Customized Query"),
+  new CommandInfo(
+    RUN_COMMAND,
+    "js",
+    "Run customized js",
+    "Local Telegram Bot: Define Customized Query")
+];
 
 // FIXME: not that sandboxed
 // function needs to be run here, not outside iframe
@@ -63,27 +92,27 @@ async function runScript(script: string, inputs: any[]) {
 }
 
 function parseCommand(content: string): Command | null {
-  let prefix = "";
-  for (let key in commandTypes) {
-    if (content.startsWith(key)) {
-      prefix = key;
+  let commandInfo: CommandInfo | undefined;
+  for (let info of commandInfos) {
+    if (content.startsWith(info.pageName)) {
+      commandInfo = info;
       break;
     }
   }
 
-  if (!prefix) {
+  if (!commandInfo) {
     log(`content is not valid: ${content}`);
     return null;
   }
 
-  const parts = content.substring(prefix.length).split("```");
+  const parts = content.substring(commandInfo.pageName.length).split("```");
   if (parts.length < 2) {
     log(`content is not valid: ${content}`);
     return null;
   }
 
   const command = new Command();
-  command.type = commandTypes[prefix];
+  command.type = commandInfo.type;
 
   let signature = parts[0].trim();
   if (signature.endsWith(DEBUG_CMD_RENDERER)) {
@@ -115,25 +144,22 @@ async function runCommand(command: Command, argv: any[]) {
 }
 
 function stringifyCommand(command: Command): string {
-  let prefix = "";
-  for (let key in commandTypes) {
-    if (commandTypes[key] === command.type) {
-      prefix = key;
+  let commandInfo: CommandInfo | undefined;
+  for (let info of commandInfos) {
+    if (info.type === command.type) {
+      commandInfo = info;
       break;
     }
   }
 
-  if (!prefix) {
+  if (!commandInfo) {
     log(`command is not valid: ${command.type}`);
     return "";
   }
 
-  // FIXME: remove this
-  const language = command.type == QUERY_COMMAND ? "clojure" : "js";
-
   const lines: string[] = [
-    `${prefix} ${command.name} ${command.params.join(" ")} ${DEBUG_CMD_RENDERER}\n`,
-    "```" + language + "\n" + command.script + "\n```\n",
+    `${commandInfo.pageName} ${command.name} ${command.params.join(" ")} ${DEBUG_CMD_RENDERER}\n`,
+    "```" + commandInfo.language + "\n" + command.script + "\n```\n",
     `${command.description}\n`
   ];
 

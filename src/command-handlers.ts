@@ -7,18 +7,22 @@ import minimist from "minimist";
 import { marked } from "marked";
 
 import { settings } from "./settings";
-import { Command, parseCommand, runCommand, commandTypes, COMMAND_PAGE_NAME, QUERY_COMMAND, RUN_COMMAND, DEBUG_CMD_RENDERER } from "./command-utils";
+import { Command, parseCommand, runCommand, commandInfos, COMMAND_PAGE_NAME, DEBUG_CMD_RENDERER } from "./command-utils";
 import { isMessageAuthorized, log, error } from "./utils";
 
 export { setupCommandHandlers, enableCustomizedCommands, disableCustomizedCommands };
 
-type CommandHandler = (ctx: Context) => Promise<void>;
+interface CommandHandler {
+  type: string;
+  description: string;
+  handler: (ctx: Context) => Promise<void>;
+};
 
-const commandHandlers: { type: string, description: string, handler: CommandHandler }[] = [
-  runHandlerGenerator(),
-  queryHandlerGenerator(),
+const builtinCommandHandlers: CommandHandler[] = [
   helpHandlerGenerator()
 ];
+
+const customizedCommandHandlers: CommandHandler[] = [];
 
 const commands = new Map<string, { [key: string]: Command }>;
 
@@ -111,23 +115,15 @@ async function handleCommand(command: Command, argv: string[], ctx: Context) {
   }
 }
 
-function runHandlerGenerator() {
-  return {
-    type: RUN_COMMAND,
-    description: "Customized js/ts script",
-    handler: async (ctx: Context) => {
-      processCommand(RUN_COMMAND, ctx);
-    }
-  }
-}
-
-function queryHandlerGenerator() {
-  return {
-    type: QUERY_COMMAND,
-    description: "Customized datascript query",
-    handler: async (ctx: Context) => {
-      processCommand(QUERY_COMMAND, ctx);
-    }
+function setupCustomizedCommandHandlers() {
+  for (let info of commandInfos) {
+    customizedCommandHandlers.push({
+      type: info.type,
+      description: info.description,
+      handler: (ctx: Context) => {
+        return processCommand(info.type, ctx);
+      }
+    });
   }
 }
 
@@ -135,20 +131,27 @@ function helpHandlerGenerator() {
   return {
     type: "help",
     description: "List all available commands",
+    isCustomized: false,
     handler: async (ctx: Context) => {
       let msg = "Available commands:\n";
-      for (let { type, description, handler } of commandHandlers) {
+      for (let { type, description, handler } of builtinCommandHandlers) {
         msg += `/${type}: ${description}\n`;
       }
 
-      if (commands.size > 0) {
-        msg += "\nCustomized commands:\n";
-        commands.forEach((cmds, type) => {
-          for (let subType in cmds) {
-            const cmd = cmds[subType];
-            msg += `[/${type} ${subType}|/${subType}] ${cmd.params.join(" ")}: ${cmd.description}\n`
-          }
-        });
+      if (settings.enableCustomizedCommand) {
+        for (let { type, description, handler } of customizedCommandHandlers) {
+          msg += `/${type}: ${description}\n`;
+        }
+
+        if (commands.size > 0) {
+          msg += "\nCustomized commands:\n";
+          commands.forEach((cmds, type) => {
+            for (let subType in cmds) {
+              const cmd = cmds[subType];
+              msg += `[/${type} ${subType}|/${subType}] ${cmd.params.join(" ")}: ${cmd.description}\n`
+            }
+          });
+        }
       }
 
       ctx.reply(msg);
@@ -165,13 +168,11 @@ function slashTemplate(name: string, language: string) {
 
 function setupSlashCommands() {
   // FIXME: unable to un-register?
-  logseq.Editor.registerSlashCommand("Local Telegram Bot: Define Customized Query", async (e) => {
-    logseq.Editor.updateBlock(e.uuid, slashTemplate(QUERY_COMMAND, "clojure"));
-  });
-
-  logseq.Editor.registerSlashCommand("Local Telegram Bot: Define Customized Run", async (e) => {
-    logseq.Editor.updateBlock(e.uuid, slashTemplate(RUN_COMMAND, "js"));
-  });
+  for (let info of commandInfos) {
+    logseq.Editor.registerSlashCommand(info.slashCommand, async (e) => {
+      logseq.Editor.updateBlock(e.uuid, slashTemplate(info.type, info.language));
+    });
+  }
 }
 
 function setupCommandMiddleware(bot: Telegraf<Context>) {
@@ -183,8 +184,8 @@ function setupCommandMiddleware(bot: Telegraf<Context>) {
 
     const text = ctx.message.text;
     if (!settings.enableCustomizedCommandFromMessage) {
-      for (let prefix in commandTypes) {
-        if (text.startsWith(prefix)) {
+      for (let info of commandInfos) {
+        if (text.startsWith(info.pageName)) {
           log(`command is not allowed in message: ${text}`);
           ctx.reply("Command is not allowed in message");
           return;
@@ -220,7 +221,9 @@ function setupCommandMiddleware(bot: Telegraf<Context>) {
 let unsubscribe: IUserOffHook = () => { };
 
 function setupCommandHandlers(bot: Telegraf<Context>) {
-  for (let handler of commandHandlers) {
+  setupCustomizedCommandHandlers();
+
+  for (let handler of [...builtinCommandHandlers, ...customizedCommandHandlers]) {
     bot.command(handler.type, (ctx) => {
       if (ctx.message
         && isMessageAuthorized(ctx.message as Message.ServiceMessage)) {
