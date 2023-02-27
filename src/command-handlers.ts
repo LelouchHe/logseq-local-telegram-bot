@@ -19,8 +19,8 @@ interface CommandHandler {
 };
 
 const builtinCommandHandlers: CommandHandler[] = [
-  getHandlerGenerator(),
-  updateTaskHandlerGenerator(),
+  // getHandlerGenerator(),
+  // updateTaskHandlerGenerator(),
   helpHandlerGenerator()
 ];
 

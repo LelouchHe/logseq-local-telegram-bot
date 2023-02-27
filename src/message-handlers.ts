@@ -112,7 +112,7 @@ function textHandlerGenerator() {
     }
 
     let text = message.text;
-    
+
     if (message.entities) {
       message.entities.sort((a, b) => a.offset - b.offset);
       let subs: string[] = [];
@@ -122,6 +122,10 @@ function textHandlerGenerator() {
         let sub = text.substring(entity.offset, entity.offset + entity.length);
         subs.push(handleEntity(sub, entity));
         offset = entity.offset + entity.length;
+      }
+
+      if (offset < text.length) {
+        subs.push(text.substring(offset));
       }
 
       text = subs.join("");
