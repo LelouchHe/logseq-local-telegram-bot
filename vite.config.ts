@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import rollupNodePolyFill from 'rollup-plugin-node-polyfills'
 
@@ -48,5 +49,8 @@ export default defineConfig({
       buffer: 'rollup-plugin-node-polyfills/polyfills/buffer-es6',
       process: 'rollup-plugin-node-polyfills/polyfills/process-es6'
     }
+  },
+  test: {
+    environment: "jsdom"
   }
 });

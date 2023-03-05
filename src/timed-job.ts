@@ -23,7 +23,7 @@ function runAtInterval(name: string, time: Date, seconds: number, cb: () => void
     target.setTime(target.getTime() + seconds * MS_PER_SECOND);
   }
 
-  jobIds[name] = setTimeout(() => {
+  jobIds[name] = window.setTimeout(() => {
     log(`job(${name}: ${jobIds[name]}) is running at ${new Date().toLocaleString()}`);
     cb();
     runAtInterval(name, time, seconds, cb);
@@ -39,7 +39,7 @@ function runAt(name: string, time: Date, cb: () => void) {
     return;
   }
 
-  jobIds[name] = setTimeout(() => {
+  jobIds[name] = window.setTimeout(() => {
     log(`job(${name}: ${jobIds[name]}) is running at ${new Date().toLocaleString()}`);
     cb();
   }, delay);
