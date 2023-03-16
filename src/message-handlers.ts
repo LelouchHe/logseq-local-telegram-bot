@@ -213,10 +213,41 @@ function photoHandlerGenerator(bot: Telegraf<Context>) {
   };
 }
 
+function documentHandlerGenerator(bot: Telegraf<Context>) {
+  async function handler(ctx: Context, message: Message.DocumentMessage) {
+    if (!message.document.mime_type?.startsWith("image/")) {
+      log(`document mime_type is not image: ${message.document.mime_type}`);
+      return;
+    }
+
+    const photoUrl = await ctx.telegram.getFileLink(message.document.file_id);
+    const caption = message.caption ?? DEFAULT_CAPTION;
+    let text = photoTemplate(caption, message.document.file_id, photoUrl);
+    if (settings.addTimestamp) {
+      const receiveDate = new Date();
+      receiveDate.setTime(message.date * 1000);
+
+      text = `${getTimestampString(receiveDate)} - ${text}`;
+    }
+
+    if (!await writeBlock(
+      settings.pageName,
+      settings.inboxName,
+      text)) {
+      ctx.reply("Failed to write this to Logseq");
+    }
+  }
+  return {
+    type: "document",
+    handler: handler as MessageHandler
+  };
+}
+
 function setupMessageHandlers(bot: Telegraf<Context>) {
   const messageHandlers: { type: string, handler: MessageHandler }[] = [
     textHandlerGenerator(),
-    photoHandlerGenerator(bot)
+    photoHandlerGenerator(bot),
+    documentHandlerGenerator(bot)
   ];
 
   for (let handler of messageHandlers) {
